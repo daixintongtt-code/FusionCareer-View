@@ -77,7 +77,7 @@
                 <div style="font-size:.83rem;font-weight:600;color:var(--ink)">投递成功！</div>
                 <div style="font-size:.75rem;color:var(--ink-3);margin-top:.25rem">学院老师将在审核后联系你</div>
               </div>
-              <button v-else class="btn btn-primary" style="width:100%" @click="showApply=true">
+              <button v-else type="button" class="btn btn-primary" style="width:100%" @click="openApply">
                 <i class="ti ti-send"></i> 立即投递
               </button>
             </template>
@@ -102,7 +102,7 @@
           <button class="icon-btn" @click="showApply=false"><i class="ti ti-x"></i></button>
         </div>
         <div class="apply-modal-body">
-          <div v-for="(q, qi) in mockQuestions" :key="q.id" class="aq-item">
+          <div v-for="(q, qi) in questions" :key="q.id" class="aq-item">
             <div class="aq-label">{{ qi+1 }}. {{ q.title }}<span v-if="q.required" style="color:var(--red)"> *</span></div>
             <input v-if="q.type==='TEXT'" class="form-control" v-model="answers[q.id]" :placeholder="q.placeholder || '请填写'" />
             <textarea v-else-if="q.type==='TEXTAREA'" class="form-control" style="min-height:80px" v-model="answers[q.id]" :placeholder="q.placeholder || '请填写'"></textarea>
@@ -117,29 +117,27 @@
               </label>
             </div>
             <div v-else-if="q.type==='FILE_UPLOAD'" class="resume-picker">
-              <!-- 当前已选 -->
-              <div v-if="answers[q.id]" class="resume-picker-current">
+              <div v-if="fileAnswers[q.id]" class="resume-picker-current">
                 <i class="ti ti-file-check" style="color:#1e6636"></i>
-                <span>{{ answers[q.id] }}</span>
-                <button class="resume-picker-clear" @click="answers[q.id]=null" title="取消选择"><i class="ti ti-x" /></button>
+                <span>{{ fileAnswers[q.id].name }}</span>
+                <button type="button" class="resume-picker-clear" @click="clearFileAnswer(q.id)" title="取消选择"><i class="ti ti-x" /></button>
               </div>
-              <!-- 选项区 -->
               <div class="resume-picker-opts">
                 <div class="resume-picker-section-label">从我的简历选择</div>
-                <div v-for="r in myResumes" :key="r.name"
+                <div v-for="r in resumeFiles" :key="r.id"
                   class="resume-picker-item"
-                  :class="{ selected: answers[q.id]===r.name }"
-                  @click="answers[q.id]=r.name"
+                  :class="{ selected: fileAnswers[q.id]?.id === r.id }"
+                  @click="pickResumeFile(q.id, r)"
                 >
-                  <i :class="['ti', r.icon]" />
-                  <span>{{ r.name }}</span>
-                  <i v-if="answers[q.id]===r.name" class="ti ti-circle-check-filled" style="color:var(--red);margin-left:auto" />
+                  <i :class="['ti', resumeFileIcon(r)]" />
+                  <span>{{ r.originalName }}</span>
+                  <i v-if="fileAnswers[q.id]?.id === r.id" class="ti ti-circle-check-filled" style="color:var(--red);margin-left:auto" />
                 </div>
-                <div class="resume-picker-section-label" style="margin-top:.6rem">或上传本地文件</div>
+                <div class="resume-picker-section-label" style="margin-top:.6rem">或上传本地文件（≤20MB）</div>
                 <div class="resume-picker-item resume-picker-upload" @click="triggerFile(q.id)">
-                  <input type="file" style="display:none" :ref="el => { fileRefs[q.id] = el }" accept=".pdf,.doc,.docx" @change="e => handleFile(q.id, e)" />
+                  <input type="file" style="display:none" :ref="el => { fileRefs[q.id] = el }" accept=".pdf,.jpg,.jpeg,.png" @change="e => handleFile(q.id, e)" />
                   <i class="ti ti-cloud-upload" />
-                  <span>点击上传新简历（PDF / Word）</span>
+                  <span>点击上传（PDF / 图片）</span>
                 </div>
               </div>
             </div>
@@ -147,6 +145,7 @@
         </div>
         <div class="apply-modal-foot">
           <button class="btn btn-secondary btn-sm" @click="showApply=false">取消</button>
+          <button type="button" class="btn btn-secondary btn-sm" @click="saveApplyDraft"><i class="ti ti-device-floppy"></i>存草稿</button>
           <button class="btn btn-primary btn-sm" @click="submitApply"><i class="ti ti-send"></i>确认投递</button>
         </div>
       </div>
@@ -155,42 +154,47 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import UserNavbar from '@/components/UserNavbar.vue'
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
+import { apiJson } from '@/lib/api'
+import {
+  loadQuestionnaireBundle,
+  loadMyAnswerRecord,
+  loadResumeFileList,
+  applyParsedToDetailForm,
+  validateRequiredAnswers,
+  submitQuestionnaire,
+  saveDraftQuestionnaire,
+  uploadQuestionnaireFile,
+  validateQuestionnaireUploadFile,
+  resumeFileIconByName,
+} from '@/composables/useQuestionnaireForm'
+
+function resumeFileIcon(r) {
+  return resumeFileIconByName(r?.originalName)
+}
 
 const route = useRoute()
 const toast = useToast()
-const BASE = 'http://localhost:9100'
+const allowMockFallback = import.meta.env.DEV && import.meta.env.VITE_DISABLE_JOB_MOCK !== '1'
+
 const job = ref(null)
 const loading = ref(false)
 const showApply = ref(false)
 const submitted = ref(false)
 const answers = ref({})
+/** 文件题：questionId -> { id, name }（id 为 resume_file_id，提交进 answers JSON） */
+const fileAnswers = ref({})
 const fileRefs = {}
+const resumeFiles = ref([])
+const questions = ref([])
+const questionnaireExpired = ref(false)
+const questionnaireDeadline = ref('')
 
-// 平台已上传的简历（与 ProfileView 保持同步，实际应从接口获取）
-const myResumes = [
-  { name: '李同学_简历_2025.pdf',  icon: 'ti-file-type-pdf' },
-  { name: '李同学_简历_备份.docx', icon: 'ti-file-type-doc' },
-]
-
-const abbr = computed(function() {
-  if (job.value && job.value.companyName) return job.value.companyName.charAt(0)
-  return '职'
-})
-
-const WORK_MODE_MAP = { ONLINE: '线上', OFFLINE: '线下', HYBRID: '线上线下均可' }
-const EDU_MAP = { UNDERGRADUATE: '本科生', ACADEMIC_MASTER: '学术硕士研究生', PROFESSIONAL_MASTER: '专业硕士研究生', DOCTORAL: '博士研究生' }
-const RECRUIT_MAP = { BIG_INTERNSHIP: '大实习', SMALL_INTERNSHIP: '小实习', DAILY_INTERNSHIP: '日常实习', CAMPUS_RECRUITMENT: '应届生招聘', CAMPUS_SCREENING: '应届生摸排', OTHER: '其他' }
-
-const workModeLabel = computed(function() { return job.value ? (WORK_MODE_MAP[job.value.workMode] || '') : '' })
-const eduLabel = computed(function() { return job.value ? (EDU_MAP[job.value.reqEduLevel] || '') : '' })
-const recruitLabel = computed(function() { return job.value ? (RECRUIT_MAP[job.value.recruitType] || '') : '' })
-
-var MOCK = [
+const MOCK = [
   { id: 1,  positionName: '新媒体编辑记者',      companyName: '新华社',     workCity: '上海', workEndDate: '2025-06-30', salaryDisplay: '面议',       workMode: 'OFFLINE', recruitType: 'CAMPUS_RECRUITMENT', sourceUrl: '',                           jobDesc: '负责新媒体平台日常内容编辑与发布，参与重大新闻报道策划，独立完成文字、图片、短视频等多形态内容生产。要求文字功底扎实，对新闻有热情，能适应快节奏工作环境。', reqEduLevel: 'ACADEMIC_MASTER',    reqMajor: '新闻传播学、中文',     reqSkills: '熟练使用各类新媒体工具，有校媒经历优先',       reqOther: '实习期不少于3个月，每周5天' },
   { id: 2,  positionName: '内容运营实习生',       companyName: '腾讯新闻',   workCity: '深圳', workEndDate: '2025-07-10', salaryDisplay: '200元/天',   workMode: 'OFFLINE', recruitType: 'BIG_INTERNSHIP',       sourceUrl: '',                           jobDesc: '协助内容团队进行选题策划、内容分发与用户运营，参与数据分析和竞品研究，支持日常运营工作。',                                                               reqEduLevel: 'UNDERGRADUATE',       reqMajor: '新闻、传播、中文、市场营销', reqSkills: '有一定数据分析能力，熟悉微信、微博等平台运营规则' },
   { id: 3,  positionName: '企业公关传播实习',     companyName: '字节跳动',   workCity: '上海', workEndDate: '2025-07-15', salaryDisplay: '250元/天',   workMode: 'HYBRID',  recruitType: 'DAILY_INTERNSHIP',     sourceUrl: 'https://job.bytedance.com/1', jobDesc: '协助企业公关团队处理媒体关系，参与品牌传播活动策划，撰写新闻稿和品牌故事，维护媒体资源库。',                                                               reqEduLevel: 'UNDERGRADUATE',       reqMajor: '新闻传播、公共关系、中文', reqSkills: '有媒体实习经历或校媒经验优先，英文读写能力良好' },
@@ -205,68 +209,203 @@ var MOCK = [
   { id: 13, positionName: '国际传播编辑',         companyName: '光明日报',   workCity: '北京', workEndDate: '2025-08-10', salaryDisplay: '面议',       workMode: 'OFFLINE', recruitType: 'CAMPUS_RECRUITMENT', sourceUrl: '',                           jobDesc: '负责光明日报国际版及海外平台内容编辑，参与中国故事的对外传播。',                                                                                             reqEduLevel: 'ACADEMIC_MASTER',    reqMajor: '新闻传播、外语类',     reqSkills: '英文写作能力强，有海外学习/生活经历优先' },
 ]
 
-var mockQuestions = [
-  { id: 1001, title: '姓名',                     type: 'TEXT',        required: true,  placeholder: '请填写真实姓名' },
-  { id: 1002, title: '年级',                     type: 'RADIO',       required: true,  options: ['2021级', '2022级', '2023级', '2024级'] },
-  { id: 1003, title: '期望实习时长',             type: 'CHECKBOX',    required: true,  options: ['3个月以内', '3-6个月', '6个月以上'] },
-  { id: 1004, title: '请简述您的相关经历',       type: 'TEXTAREA',    required: true,  placeholder: '如：曾在XX媒体实习，负责……' },
-  { id: 1005, title: '您对该岗位最感兴趣的方向', type: 'TEXTAREA',    required: false, placeholder: '简要说明' },
-  { id: 1006, title: '个人简历',                 type: 'FILE_UPLOAD', required: true },
+const abbr = computed(() => (job.value?.companyName ? job.value.companyName.charAt(0) : '职'))
+
+const WORK_MODE_MAP = { ONLINE: '线上', OFFLINE: '线下', HYBRID: '线上线下均可' }
+const EDU_MAP = { UNDERGRADUATE: '本科生', ACADEMIC_MASTER: '学术硕士研究生', PROFESSIONAL_MASTER: '专业硕士研究生', DOCTORAL: '博士研究生' }
+const RECRUIT_MAP = { BIG_INTERNSHIP: '大实习', SMALL_INTERNSHIP: '小实习', DAILY_INTERNSHIP: '日常实习', CAMPUS_RECRUITMENT: '应届生招聘', CAMPUS_SCREENING: '应届生摸排', OTHER: '其他' }
+
+const workModeLabel = computed(() => (job.value ? (WORK_MODE_MAP[job.value.workMode] || '') : ''))
+const eduLabel = computed(() => (job.value ? (EDU_MAP[job.value.reqEduLevel] || '') : ''))
+const recruitLabel = computed(() => (job.value ? (RECRUIT_MAP[job.value.recruitType] || '') : ''))
+
+function applyQuestionnaireMeta(data) {
+  questionnaireExpired.value = !!data?.expired
+  questionnaireDeadline.value = data?.questionnaireDeadline || ''
+}
+
+function openApply() {
+  if (questionnaireExpired.value) {
+    toast.error('问卷已截止，无法投递')
+    return
+  }
+  showApply.value = true
+}
+
+const MOCK_QUESTIONS_FALLBACK = [
+  { id: 1001, title: '姓名', type: 'TEXT', required: true, placeholder: '请填写真实姓名', options: [] },
+  { id: 1002, title: '年级', type: 'RADIO', required: true, options: ['2021级', '2022级', '2023级', '2024级'] },
+  { id: 1003, title: '期望实习时长', type: 'CHECKBOX', required: true, options: ['3个月以内', '3-6个月', '6个月以上'] },
+  { id: 1004, title: '请简述您的相关经历', type: 'TEXTAREA', required: true, placeholder: '如：曾在XX媒体实习，负责……', options: [] },
+  { id: 1005, title: '您对该岗位最感兴趣的方向', type: 'TEXTAREA', required: false, placeholder: '简要说明', options: [] },
+  { id: 1006, title: '个人简历', type: 'FILE_UPLOAD', required: true, options: [] },
 ]
+
+function resetApplyForm() {
+  answers.value = {}
+  fileAnswers.value = {}
+}
+
+async function loadResumeFiles() {
+  resumeFiles.value = await loadResumeFileList()
+}
+
+async function loadQuestions() {
+  const jid = route.params.id
+  try {
+    const bundle = await loadQuestionnaireBundle(jid)
+    applyQuestionnaireMeta(bundle)
+    questions.value = bundle.questions
+  } catch (e) {
+    if (allowMockFallback) {
+      questions.value = MOCK_QUESTIONS_FALLBACK
+      questionnaireExpired.value = false
+      questionnaireDeadline.value = ''
+    } else {
+      questions.value = []
+      toast.error(e?.message || '加载问卷失败')
+    }
+  }
+}
+
+async function loadMyAnswer() {
+  const resp = await loadMyAnswerRecord(route.params.id)
+  if (resp?.answers) {
+    applyParsedToDetailForm(
+      questions.value,
+      resp.answers,
+      resumeFiles.value,
+      answers.value,
+      fileAnswers.value
+    )
+  }
+}
+
+watch(showApply, async (open) => {
+  if (!open || !job.value?.id || job.value.sourceUrl) return
+  if (questionnaireExpired.value) {
+    showApply.value = false
+    toast.error('问卷已截止，无法投递或修改')
+    return
+  }
+  resetApplyForm()
+  await loadResumeFiles()
+  await loadQuestions()
+  await loadMyAnswer()
+})
 
 function toggleCheck(qid, opt) {
   if (!answers.value[qid]) answers.value[qid] = []
-  var idx = answers.value[qid].indexOf(opt)
+  const idx = answers.value[qid].indexOf(opt)
   if (idx === -1) answers.value[qid].push(opt)
   else answers.value[qid].splice(idx, 1)
 }
 
 function triggerFile(qid) {
-  if (fileRefs[qid]) fileRefs[qid].click()
+  fileRefs[qid]?.click?.()
 }
 
-function handleFile(qid, e) {
-  var f = e.target.files[0]
-  if (f) answers.value[qid] = f.name
+function pickResumeFile(qid, r) {
+  fileAnswers.value = { ...fileAnswers.value, [qid]: { id: r.id, name: r.originalName } }
 }
 
-function submitApply() {
-  for (var i = 0; i < mockQuestions.length; i++) {
-    var q = mockQuestions[i]
-    if (!q.required) continue
-    var v = answers.value[q.id]
-    if (!v || (Array.isArray(v) && v.length === 0)) {
-      toast.error('请填写「' + q.title + '」')
-      return
-    }
+function clearFileAnswer(qid) {
+  const next = { ...fileAnswers.value }
+  delete next[qid]
+  fileAnswers.value = next
+}
+
+async function handleFile(qid, e) {
+  const f = e.target.files?.[0]
+  if (e.target) e.target.value = ''
+  if (!f) return
+  const uploadErr = validateQuestionnaireUploadFile(f)
+  if (uploadErr) {
+    toast.error(uploadErr)
+    return
   }
-  showApply.value = false
-  submitted.value = true
-  toast.success('投递成功！')
+  try {
+    const rf = await uploadQuestionnaireFile(f)
+    fileAnswers.value = { ...fileAnswers.value, [qid]: { id: rf.id, name: rf.originalName } }
+    toast.success('附件已上传')
+  } catch (err) {
+    toast.error(err?.message || '上传失败')
+  }
+}
+
+async function saveApplyDraft() {
+  if (!questions.value.length) {
+    toast.error('该岗位暂无问卷题目')
+    return
+  }
+  try {
+    await saveDraftQuestionnaire(route.params.id, questions.value, answers.value, fileAnswers.value)
+    showApply.value = false
+    toast.success('草稿已保存')
+  } catch (e) {
+    toast.error(e?.message || '保存草稿失败')
+  }
+}
+
+async function submitApply() {
+  if (!questions.value.length) {
+    toast.error('该岗位暂无问卷题目')
+    return
+  }
+  const errMsg = validateRequiredAnswers(questions.value, answers.value, fileAnswers.value)
+  if (errMsg) {
+    toast.error(errMsg)
+    return
+  }
+  try {
+    await submitQuestionnaire(route.params.id, questions.value, answers.value, fileAnswers.value)
+    showApply.value = false
+    submitted.value = true
+    toast.success('投递成功！')
+  } catch (e) {
+    toast.error(e?.message || '提交失败')
+  }
 }
 
 async function fetchJob() {
   loading.value = true
+  questionnaireExpired.value = false
+  questionnaireDeadline.value = ''
   try {
-    var res = await fetch(BASE + '/job/' + route.params.id)
-    var data = await res.json()
-    if (data.code === 200 && data.data) {
-      job.value = data.data
-    } else {
-      throw new Error('not found')
+    job.value = await apiJson(`/job/${route.params.id}`)
+    submitted.value = false
+    if (job.value && !job.value.sourceUrl) {
+      try {
+        const bundle = await loadQuestionnaireBundle(route.params.id)
+        applyQuestionnaireMeta(bundle)
+      } catch {
+        questionnaireExpired.value = false
+        questionnaireDeadline.value = job.value?.workEndDate || ''
+      }
+      try {
+        const my = await loadMyAnswerRecord(route.params.id)
+        submitted.value =
+          my?.submissionStatus === 'SUBMITTED' || my?.submissionStatus === 'REVIEWED'
+      } catch {
+        submitted.value = false
+      }
     }
   } catch (e) {
-    var id = Number(route.params.id)
+    const id = Number(route.params.id)
     job.value = null
-    for (var i = 0; i < MOCK.length; i++) {
-      if (MOCK[i].id === id) { job.value = MOCK[i]; break }
+    if (allowMockFallback) {
+      job.value = MOCK.find(m => m.id === id) || null
+    } else {
+      toast.error(e?.message || '岗位加载失败')
     }
   } finally {
     loading.value = false
   }
 }
 
-onMounted(fetchJob)
+onMounted(() => {
+  fetchJob()
+})
 </script>
 
 <style scoped>
