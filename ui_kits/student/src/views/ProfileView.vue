@@ -8,15 +8,15 @@
         <div>
           <div class="card card-p">
             <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-bottom:1.1rem;border-bottom:1px solid var(--border);margin-bottom:1.1rem">
-              <div class="nav-avatar" style="width:52px;height:52px;font-size:1.3rem;margin-bottom:.5rem">李</div>
-              <div style="font-size:.875rem;font-weight:700;color:var(--ink)">李同学</div>
+              <div class="nav-avatar" style="width:52px;height:52px;font-size:1.3rem;margin-bottom:.5rem">{{ avatarChar }}</div>
+              <div style="font-size:.875rem;font-weight:700;color:var(--ink)">{{ profileForm.realName || '同学' }}</div>
             </div>
             <button v-for="item in navItems" :key="item.view"
               :class="['profile-nav-item', view===item.view && 'active']"
               @click="switchView(item.view)"
             ><i :class="['ti',item.icon]" />{{ item.label }}</button>
             <div class="divider" />
-            <RouterLink class="profile-nav-item" to="/login"><i class="ti ti-logout" />退出登录</RouterLink>
+            <a href="#/login" class="profile-nav-item" @click.prevent="onLogoutClick"><i class="ti ti-logout" />退出登录</a>
           </div>
         </div>
 
@@ -27,54 +27,103 @@
           <template v-if="view==='info'">
             <div class="card card-p">
               <div class="panel-title"><i class="ti ti-user" />基本信息</div>
+              <div v-if="pageLoading" style="text-align:center;padding:2rem;color:var(--ink-3)">加载中…</div>
+              <template v-else>
               <div class="grid-2">
-                <div class="form-group"><label class="form-label">姓名</label><input class="form-control" v-model="form.name" /></div>
-                <div class="form-group"><label class="form-label">学号</label><input class="form-control" :value="form.sid" readonly /></div>
-                <div class="form-group"><label class="form-label">届次</label><input class="form-control" v-model="form.grade" /></div>
-                <div class="form-group"><label class="form-label">学历</label>
-                  <select class="form-control" v-model="form.degree">
-                    <option>硕士研究生</option><option>本科</option><option>博士研究生</option>
+                <div class="form-group"><label class="form-label">姓名</label><input class="form-control" v-model="profileForm.realName" placeholder="真实姓名" /></div>
+                <div class="form-group"><label class="form-label">用户 ID</label><input class="form-control" :value="profileForm.userId || '—'" readonly /></div>
+                <div class="form-group"><label class="form-label">性别</label>
+                  <select class="form-control" v-model="profileForm.gender">
+                    <option value="">请选择</option>
+                    <option v-for="o in genderOpts" :key="o.v" :value="o.v">{{ o.l }}</option>
                   </select>
                 </div>
-                <div class="form-group"><label class="form-label">联系邮箱</label><input class="form-control" v-model="form.email" /></div>
-                <div class="form-group"><label class="form-label">手机号</label><input class="form-control" v-model="form.phone" placeholder="请填写手机号" /></div>
+                <div class="form-group"><label class="form-label">出生日期</label><input class="form-control" type="date" v-model="profileForm.birthDate" /></div>
+                <div class="form-group"><label class="form-label">政治面貌</label>
+                  <select class="form-control" v-model="profileForm.politicalStatus">
+                    <option value="">请选择</option>
+                    <option v-for="o in politicalOpts" :key="o.v" :value="o.v">{{ o.l }}</option>
+                  </select>
+                </div>
+                <div class="form-group"><label class="form-label">学历</label>
+                  <select class="form-control" v-model="profileForm.eduLevel">
+                    <option value="">请选择</option>
+                    <option v-for="o in eduOpts" :key="o.v" :value="o.v">{{ o.l }}</option>
+                  </select>
+                </div>
+                <div class="form-group"><label class="form-label">届次 / 年级</label><input class="form-control" v-model="profileForm.grade" placeholder="如 2025 届" /></div>
+                <div class="form-group"><label class="form-label">专业</label><input class="form-control" v-model="profileForm.major" /></div>
+                <div class="form-group"><label class="form-label">手机号</label><input class="form-control" v-model="profileForm.phone" /></div>
+                <div class="form-group"><label class="form-label">邮箱</label><input class="form-control" v-model="profileForm.email" /></div>
+                <div class="form-group"><label class="form-label">微信</label><input class="form-control" v-model="profileForm.wechat" /></div>
+                <div class="form-group"><label class="form-label">籍贯</label><input class="form-control" v-model="profileForm.hometown" /></div>
+                <div class="form-group"><label class="form-label">导师</label><input class="form-control" v-model="profileForm.supervisor" /></div>
+                <div class="form-group span-2"><label class="form-label">就业意向排序</label><input class="form-control" v-model="profileForm.intentionOrder" placeholder="如：媒体 / 企业 / 体制内" /></div>
+                <div class="form-group"><label class="form-label">意向城市</label><input class="form-control" v-model="profileForm.intentionCity" /></div>
+                <div class="form-group"><label class="form-label">意向单位 / 梦想 offer</label><input class="form-control" v-model="profileForm.intentionDream" /></div>
+                <div class="form-group span-2"><label class="form-label">当前心态</label>
+                  <select class="form-control" v-model="profileForm.mindset">
+                    <option value="">请选择</option>
+                    <option v-for="o in mindsetOpts" :key="o.v" :value="o.v">{{ o.l }}</option>
+                  </select>
+                </div>
               </div>
               <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem">
-                <button class="btn btn-secondary">取消</button>
-                <button class="btn btn-primary" @click="toast.success('资料保存成功')"><i class="ti ti-check" />保存</button>
+                <button type="button" class="btn btn-secondary" @click="resetProfile">取消</button>
+                <button type="button" class="btn btn-primary" @click="saveProfile"><i class="ti ti-check" />保存</button>
               </div>
+              </template>
             </div>
           </template>
 
           <!-- 我的简历 -->
           <template v-if="view==='resume'">
-            <div class="card card-p">
-              <div class="panel-title"><i class="ti ti-file-text" />我的简历</div>
-              <div v-for="(r, index) in resumes" :key="r.name" class="resume-row">
+            <div class="card card-p" style="margin-bottom:1rem">
+              <div class="panel-title"><i class="ti ti-file-text" />简历附件</div>
+              <div v-if="pageLoading" style="text-align:center;padding:2rem;color:var(--ink-3)">加载中…</div>
+              <template v-else>
+              <div v-for="(r, index) in resumeFiles" :key="r.id" class="resume-row">
                 <div style="width:38px;height:38px;border-radius:var(--r-md);background:var(--red-light);border:1px solid var(--red-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--red);font-size:1rem">
-                  <i :class="['ti',r.icon]" />
+                  <i :class="['ti', fileIcon(r)]" />
                 </div>
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:.867rem;font-weight:500;color:var(--ink)">{{ r.name }}</div>
-                  <div style="font-size:.733rem;color:var(--ink-2)">{{ r.meta }}</div>
+                  <div style="font-size:.867rem;font-weight:500;color:var(--ink)">{{ r.originalName }}</div>
+                  <div style="font-size:.733rem;color:var(--ink-2)">{{ fileMetaLine(r) }}</div>
                 </div>
                 <div style="display:flex;gap:.3rem">
-                  <button class="btn-icon btn" title="预览" @click="previewResume(r)"><i class="ti ti-eye" /></button>
-                  <button class="btn-icon btn" title="下载" @click="downloadResume(r)"><i class="ti ti-download" /></button>
-                  <button class="btn-icon btn" title="删除" @click="deleteResume(index)"><i class="ti ti-trash" /></button>
+                  <button type="button" class="btn-icon btn" title="下载" @click="downloadResumeFile(r)"><i class="ti ti-download" /></button>
+                  <button type="button" class="btn-icon btn" title="删除" @click="deleteResume(index)"><i class="ti ti-trash" /></button>
                 </div>
               </div>
               <input
                 ref="fileInput"
                 type="file"
-                accept=".pdf,.doc,.docx"
+                accept=".pdf,.jpg,.jpeg,.png"
                 style="display:none"
                 @change="handleUpload"
               />
               <div class="upload-zone" style="margin-top:1rem" @click="fileInput?.click()">
                 <i class="ti ti-cloud-upload" />
                 <div class="uz-title">上传新简历</div>
-                <div class="uz-hint">支持 PDF、Word 格式，单文件不超过 5 MB</div>
+                <div class="uz-hint">支持 PDF、JPG、PNG，单文件不超过 20 MB；个人总配额 30 MB（已用 {{ quotaUsedMb }} / {{ quotaTotalMb }} MB）</div>
+              </div>
+              </template>
+            </div>
+            <div class="card card-p">
+              <div class="panel-title"><i class="ti ti-notes" />简历正文</div>
+              <p style="font-size:.78rem;color:var(--ink-3);margin-bottom:1rem">以下内容对应后台「个人简历」富文本字段，保存后写入 /user/resume/save。</p>
+              <div class="form-group"><label class="form-label">个人简介</label><textarea class="form-control" style="min-height:72px" v-model="resumeForm.personalIntro" /></div>
+              <div class="form-group"><label class="form-label">基本信息</label><textarea class="form-control" style="min-height:72px" v-model="resumeForm.basicInfo" /></div>
+              <div class="form-group"><label class="form-label">教育经历</label><textarea class="form-control" style="min-height:72px" v-model="resumeForm.education" /></div>
+              <div class="form-group"><label class="form-label">实习经历</label><textarea class="form-control" style="min-height:72px" v-model="resumeForm.internship" /></div>
+              <div class="form-group"><label class="form-label">校园经历</label><textarea class="form-control" style="min-height:72px" v-model="resumeForm.campus" /></div>
+              <div class="form-group"><label class="form-label">获奖情况</label><textarea class="form-control" style="min-height:72px" v-model="resumeForm.awards" /></div>
+              <div class="form-group"><label class="form-label">技能特长</label><textarea class="form-control" style="min-height:72px" v-model="resumeForm.skills" /></div>
+              <div class="form-group"><label class="form-label">作品集 / 链接</label><textarea class="form-control" style="min-height:56px" v-model="resumeForm.portfolio" /></div>
+              <div class="form-group"><label class="form-label">备注</label><textarea class="form-control" style="min-height:56px" v-model="resumeForm.remark" /></div>
+              <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem">
+                <button type="button" class="btn btn-secondary" @click="resetResume">取消</button>
+                <button type="button" class="btn btn-primary" @click="saveResume"><i class="ti ti-check" />保存简历正文</button>
               </div>
             </div>
           </template>
@@ -89,19 +138,23 @@
                   @click="activeTab=t.k"
                 >{{ t.label }}<span v-if="t.n" class="tab-count">{{ t.n }}</span></button>
               </div>
-              <div v-for="a in filteredApps" :key="a.title" class="app-row" @click="openJobDetail">
+              <div v-if="appsLoading" style="padding:1rem;color:var(--ink-3);font-size:.8rem">加载中…</div>
+              <div v-else-if="!filteredApps.length" style="padding:1rem;color:var(--ink-3);font-size:.8rem">暂无投递记录</div>
+              <div v-for="a in filteredApps" :key="a.id" class="app-row" @click="openJobDetail(a)">
                 <div class="job-logo" style="width:36px;height:36px">{{ a.abbr }}</div>
                 <div style="flex:1;min-width:0">
-                  <div style="display:flex;align-items:center;gap:.45rem">
+                  <div style="display:flex;align-items:center;gap:.45rem;flex-wrap:wrap">
                     <span style="font-size:.867rem;font-weight:600;color:var(--ink)">{{ a.title }}</span>
-                    <span v-if="isExpired(a.deadline)" style="font-size:.67rem;font-weight:600;color:#999;background:#f0f0f0;border-radius:999px;padding:.1rem .45rem;">已截止</span>
+                    <span v-if="a.sourceUrl" style="font-size:.67rem;font-weight:600;color:#1e6636;background:#e8f5ee;border-radius:999px;padding:.1rem .45rem;">官网投递</span>
+                    <span v-if="appExpired(a)" style="font-size:.67rem;font-weight:600;color:#999;background:#f0f0f0;border-radius:999px;padding:.1rem .45rem;">已截止</span>
                   </div>
                   <div style="font-size:.773rem;color:var(--ink-2)">{{ a.company }}</div>
+                  <div v-if="a.date" style="font-size:.7rem;color:var(--ink-3);margin-top:2px">更新于 {{ a.date }}</div>
                 </div>
-                <div class="edit-btn-wrap" :title="isExpired(a.deadline) ? '已截止，不可修改' : '修改投递'">
-                  <button class="btn-icon btn" :disabled="isExpired(a.deadline)"
-                    :style="isExpired(a.deadline) ? 'opacity:.35;cursor:not-allowed' : ''"
-                    @click.stop="!isExpired(a.deadline) && openEditApply(a)">
+                <div v-if="!a.sourceUrl" class="edit-btn-wrap" :title="canEditApply(a) ? '修改投递' : '已截止，不可修改'">
+                  <button class="btn-icon btn" :disabled="!canEditApply(a)"
+                    :style="!canEditApply(a) ? 'opacity:.35;cursor:not-allowed' : ''"
+                    @click.stop="canEditApply(a) && openEditApply(a)">
                     <i class="ti ti-edit" />
                   </button>
                 </div>
@@ -122,9 +175,11 @@
               <div style="font-weight:600;font-size:.95rem;color:var(--ink)">修改投递问卷</div>
               <div v-if="editingApp" style="font-size:.75rem;color:var(--ink-3);margin-top:2px">{{ editingApp.title }} · {{ editingApp.company }}</div>
             </div>
-            <button class="btn-icon btn" @click="showEditApply=false"><i class="ti ti-x" /></button>
+            <button type="button" class="btn-icon btn" @click="showEditApply=false"><i class="ti ti-x" /></button>
           </div>
           <div class="apply-modal-body">
+            <div v-if="editFormLoading" style="text-align:center;padding:2rem;color:var(--ink-3)">加载中…</div>
+            <template v-else>
             <div v-for="(q, qi) in mockQuestions" :key="q.id" class="aq-item">
               <div class="aq-label">{{ qi+1 }}. {{ q.title }}<span v-if="q.required" style="color:var(--red)"> *</span></div>
               <input v-if="q.type==='TEXT'" class="form-control" v-model="editAnswers[q.id]" :placeholder="q.placeholder||'请填写'" />
@@ -140,39 +195,45 @@
                 </label>
               </div>
               <div v-else-if="q.type==='FILE_UPLOAD'" class="resume-picker">
-                <!-- 当前已选 -->
                 <div v-if="editAnswers[q.id]" class="resume-picker-current">
                   <i class="ti ti-file-check" style="color:#1e6636"></i>
                   <span>{{ editAnswers[q.id] }}</span>
-                  <button class="resume-picker-clear" @click="editAnswers[q.id]=null" title="取消选择"><i class="ti ti-x" /></button>
+                  <button type="button" class="resume-picker-clear" @click="clearEditFile(q.id)" title="取消选择"><i class="ti ti-x" /></button>
                 </div>
-                <!-- 选项区 -->
                 <div class="resume-picker-opts">
-                  <!-- 从平台简历选 -->
                   <div class="resume-picker-section-label">从我的简历选择</div>
                   <div v-for="r in resumes" :key="r.name"
                     class="resume-picker-item"
                     :class="{ selected: editAnswers[q.id]===r.name }"
-                    @click="editAnswers[q.id]=r.name"
+                    @click="pickEditResume(q.id, r)"
                   >
                     <i :class="['ti', r.icon]" />
                     <span>{{ r.name }}</span>
                     <i v-if="editAnswers[q.id]===r.name" class="ti ti-circle-check-filled" style="color:var(--red);margin-left:auto" />
                   </div>
-                  <!-- 本地上传 -->
                   <div class="resume-picker-section-label" style="margin-top:.6rem">或上传本地文件</div>
                   <div class="resume-picker-item resume-picker-upload" @click="triggerEditFile(q.id)">
-                    <input type="file" style="display:none" :ref="el => { editFileRefs[q.id] = el }" accept=".pdf,.doc,.docx" @change="e => handleEditFile(q.id, e)" />
+                    <input type="file" style="display:none" :ref="el => { editFileRefs[q.id] = el }" accept=".pdf,.jpg,.jpeg,.png" @change="e => handleEditFile(q.id, e)" />
                     <i class="ti ti-cloud-upload" />
-                    <span>点击上传新简历（PDF / Word）</span>
+                    <span>点击上传新简历（PDF / 图片）</span>
                   </div>
                 </div>
               </div>
             </div>
+            </template>
           </div>
           <div class="apply-modal-foot">
-            <button class="btn btn-secondary btn-sm" @click="showEditApply=false">取消</button>
-            <button class="btn btn-primary btn-sm" @click="submitEditApply"><i class="ti ti-check" />保存修改</button>
+            <button type="button" class="btn btn-secondary btn-sm" @click="showEditApply=false">取消</button>
+            <button
+              v-if="canSaveEditDraft"
+              type="button"
+              class="btn btn-secondary btn-sm"
+              :disabled="editFormLoading"
+              @click="saveEditDraft"
+            >
+              <i class="ti ti-device-floppy" />存草稿
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" :disabled="editFormLoading" @click="submitEditApply"><i class="ti ti-check" />保存修改</button>
           </div>
         </div>
       </div>
@@ -196,88 +257,191 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UserNavbar from '@/components/UserNavbar.vue'
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
+import { apiJson, apiForm, apiDownloadBlob, logoutSession } from '@/lib/api'
+import {
+  loadMyApplicationsPage,
+  loadQuestionnaireBundle,
+  loadMyAnswerRecord,
+  loadResumeFileList,
+  mapResumeFilesForPicker,
+  applyParsedToProfileForm,
+  validateRequiredAnswers,
+  submitQuestionnaire,
+  saveDraftQuestionnaire,
+  uploadQuestionnaireFile,
+  validateQuestionnaireUploadFile,
+  canEditApplication,
+  submissionStatusToTabKey,
+} from '@/composables/useQuestionnaireForm'
 
-const router  = useRouter()
-const route   = useRoute()
-const toast   = useToast()
+const router = useRouter()
+const route = useRoute()
+const toast = useToast()
 
 const validViews = ['info', 'resume', 'applications']
-
-// 通过 ?tab=info|resume|applications 控制当前面板；这样浏览器返回也能回到「我的投递」
 const view = ref(validViews.includes(route.query.tab) ? route.query.tab : 'info')
 watch(() => route.query.tab, (t) => {
-  view.value = validViews.includes(t) ? t : 'info'
+  const next = validViews.includes(t) ? t : 'info'
+  view.value = next
+  if (next === 'applications') loadApplications()
 })
 
 function switchView(nextView) {
   if (!validViews.includes(nextView)) return
   router.push({ path: '/profile', query: { tab: nextView } })
+  if (nextView === 'applications') loadApplications()
 }
 
-function openJobDetail() {
-  router.push({ path: '/job/1', query: { from: 'applications' } })
+async function onLogoutClick() {
+  await logoutSession()
+  window.location.hash = '#/login'
 }
 
 const activeTab = ref('all')
-
 const navItems = [
-  { view:'info',         label:'我的资料', icon:'ti-user-circle' },
-  { view:'resume',       label:'我的简历', icon:'ti-file-text' },
-  { view:'applications', label:'我的投递', icon:'ti-send' },
+  { view: 'info', label: '我的资料', icon: 'ti-user-circle' },
+  { view: 'resume', label: '我的简历', icon: 'ti-file-text' },
+  { view: 'applications', label: '我的投递', icon: 'ti-send' },
 ]
-const form = ref({ name:'李同学', sid:'22110001', grade:'2025届', degree:'硕士研究生', email:'li2022@fudan.edu.cn', phone:'' })
-const fileInput = ref(null)
-const showDeleteModal = ref(false)
-const deleteIndex = ref(null)
 
-const resumes = ref([
-  { name:'李同学_简历_2025.pdf',  meta:'上传于 2025-05-15 · 420 KB · PDF',  icon:'ti-file-type-pdf' },
-  { name:'李同学_简历_备份.docx', meta:'上传于 2025-04-30 · 280 KB · Word', icon:'ti-file-type-doc' },
+const tabCounts = ref({ all: 0, draft: 0, pending: 0, done: 0 })
+const appTabs = computed(() => [
+  { k: 'all', label: '全部', n: tabCounts.value.all || 0 },
+  { k: 'draft', label: '草稿', n: tabCounts.value.draft || 0 },
+  { k: 'pending', label: '审核中', n: tabCounts.value.pending || 0 },
+  { k: 'done', label: '已投递', n: tabCounts.value.done || 0 },
 ])
-const appTabs = [{ k:'all',label:'全部',n:3 }]
-const apps = [
-  { abbr:'新', title:'新媒体编辑记者（2025校招）', company:'新华社上海分社', status:'已投递', bc:'badge-green', date:'2025-05-20', k:'done',    deadline:'2026-12-31' },
-  { abbr:'澎', title:'数据新闻记者', company:'澎湃新闻', status:'审核中', bc:'badge-amber', date:'2025-05-18', k:'pending', deadline:'2025-05-15' },
-  { abbr:'腾', title:'内容运营实习生', company:'腾讯新闻', status:'草稿', bc:'badge-gray', date:'2025-05-16', k:'draft',   deadline:'2025-07-10' },
-]
+const apps = ref([])
+const appsLoading = ref(false)
+
+const filteredApps = computed(() =>
+  activeTab.value === 'all' ? apps.value : apps.value.filter((a) => a.k === activeTab.value)
+)
+
+watch(activeTab, () => {
+  if (view.value === 'applications') loadApplications()
+})
+
+function formatAppDate(str) {
+  if (!str) return ''
+  const s = String(str)
+  return s.length >= 10 ? s.slice(0, 10) : s
+}
 
 function isExpired(deadline) {
   if (!deadline) return false
   return new Date(deadline) < new Date(new Date().toDateString())
 }
-const filteredApps = computed(() => activeTab.value==='all' ? apps : apps.filter(a=>a.k===activeTab.value))
 
-// ── 修改投递 ──
+function appExpired(a) {
+  if (a.expired === true) return true
+  return isExpired(a.deadline)
+}
+
+function canEditApply(a) {
+  return canEditApplication(a)
+}
+
+function mapApplicationItem(item) {
+  const title = item.positionName || '未知岗位'
+  const company = item.companyName || ''
+  return {
+    id: item.id,
+    jobPostId: item.jobPostId,
+    title,
+    company,
+    abbr: company ? company.charAt(0) : '?',
+    deadline: item.questionnaireDeadline,
+    expired: !!item.expired,
+    sourceUrl: item.sourceUrl,
+    submissionStatus: item.submissionStatus,
+    statusLabel: item.statusLabel,
+    date: formatAppDate(item.updatedAt || item.createdAt),
+    k: submissionStatusToTabKey(item.submissionStatus),
+  }
+}
+
+async function loadApplications() {
+  appsLoading.value = true
+  try {
+    const { list, tabCounts: counts } = await loadMyApplicationsPage(activeTab.value)
+    tabCounts.value = {
+      all: counts.all ?? 0,
+      draft: counts.draft ?? 0,
+      pending: counts.pending ?? 0,
+      done: counts.done ?? 0,
+    }
+    apps.value = list.map(mapApplicationItem)
+  } catch (e) {
+    apps.value = []
+    toast.error(e?.message || '加载投递记录失败')
+  } finally {
+    appsLoading.value = false
+  }
+}
+
+function openJobDetail(a) {
+  if (!a?.jobPostId) return
+  router.push({ path: `/job/${a.jobPostId}`, query: { from: 'applications' } })
+}
+
+// ── 修改投递弹窗 ──
 const showEditApply = ref(false)
 const editingApp = ref(null)
 const editAnswers = ref({})
+const editFileIds = ref({})
+const mockQuestions = ref([])
+const resumes = ref([])
+const editFormLoading = ref(false)
+const editFileRefs = {}
 
-const mockQuestions = [
-  { id: 1001, title: '姓名',                     type: 'TEXT',        required: true,  placeholder: '请填写真实姓名' },
-  { id: 1002, title: '年级',                     type: 'RADIO',       required: true,  options: ['2021级', '2022级', '2023级', '2024级'] },
-  { id: 1003, title: '期望实习时长',             type: 'CHECKBOX',    required: true,  options: ['3个月以内', '3-6个月', '6个月以上'] },
-  { id: 1004, title: '请简述您的相关经历',       type: 'TEXTAREA',    required: true,  placeholder: '如：曾在XX媒体实习，负责……' },
-  { id: 1005, title: '您对该岗位最感兴趣的方向', type: 'TEXTAREA',    required: false, placeholder: '简要说明' },
-  { id: 1006, title: '个人简历',                 type: 'FILE_UPLOAD', required: true },
-]
+/** 已正式提交（审核中）时后端 draft 接口会拒绝 */
+const canSaveEditDraft = computed(() => {
+  const s = editingApp.value?.submissionStatus
+  return s !== 'SUBMITTED' && s !== 'REVIEWED'
+})
 
-// 每条投递记录存储的答案（实际应从后端拿，这里用 mock 数据预填）
-const savedAnswers = {
-  '新媒体编辑记者（2025校招）': { 1001: '李同学', 1002: '2023级', 1003: ['3-6个月'], 1004: '曾在复旦青年担任记者，负责深度报道。', 1005: '对融媒体内容策划最感兴趣。', 1006: '李同学_简历_2025.pdf' },
-  '数据新闻记者':               { 1001: '李同学', 1002: '2023级', 1003: ['3个月以内'], 1004: '有数据新闻课程学习经历。', 1005: '数据可视化方向。', 1006: '李同学_简历_2025.pdf' },
-  '内容运营实习生':             { 1001: '李同学', 1002: '2023级', 1003: ['3-6个月'], 1004: '参与过学院新媒体账号运营。', 1005: '用户增长运营。', 1006: '李同学_简历_备份.docx' },
-}
-
-function openEditApply(app) {
+async function openEditApply(app) {
+  if (!canEditApply(app)) return
   editingApp.value = app
-  // 预填已保存的答案，没有则空
-  editAnswers.value = JSON.parse(JSON.stringify(savedAnswers[app.title] || {}))
+  editAnswers.value = {}
+  editFileIds.value = {}
+  mockQuestions.value = []
   showEditApply.value = true
+  editFormLoading.value = true
+  try {
+    const [bundle, myAnswer, fileList] = await Promise.all([
+      loadQuestionnaireBundle(app.jobPostId),
+      loadMyAnswerRecord(app.jobPostId),
+      loadResumeFileList(),
+    ])
+    if (bundle.expired) {
+      toast.error('问卷已截止，无法修改')
+      showEditApply.value = false
+      return
+    }
+    mockQuestions.value = bundle.questions
+    resumes.value = mapResumeFilesForPicker(fileList)
+    if (myAnswer?.answers) {
+      applyParsedToProfileForm(
+        mockQuestions.value,
+        myAnswer.answers,
+        fileList,
+        editAnswers.value,
+        editFileIds.value
+      )
+    }
+  } catch (e) {
+    toast.error(e?.message || '加载问卷失败')
+    showEditApply.value = false
+  } finally {
+    editFormLoading.value = false
+  }
 }
 
 function toggleEditCheck(qid, opt) {
@@ -287,94 +451,324 @@ function toggleEditCheck(qid, opt) {
   else editAnswers.value[qid].splice(idx, 1)
 }
 
-const editFileRefs = {}
-
 function triggerEditFile(qid) {
-  if (editFileRefs[qid]) editFileRefs[qid].click()
+  editFileRefs[qid]?.click?.()
 }
 
-function handleEditFile(qid, e) {
+function pickEditResume(qid, r) {
+  editAnswers.value = { ...editAnswers.value, [qid]: r.name }
+  editFileIds.value = { ...editFileIds.value, [qid]: r.id }
+}
+
+function clearEditFile(qid) {
+  const nextA = { ...editAnswers.value }
+  const nextF = { ...editFileIds.value }
+  delete nextA[qid]
+  delete nextF[qid]
+  editAnswers.value = nextA
+  editFileIds.value = nextF
+}
+
+async function handleEditFile(qid, e) {
   const f = e.target.files?.[0]
+  if (e.target) e.target.value = ''
   if (!f) return
-  const ext = f.name.split('.').pop().toLowerCase()
-  if (!['pdf','doc','docx'].includes(ext)) {
-    toast.error('仅支持 PDF、Word 格式')
+  const err = validateQuestionnaireUploadFile(f)
+  if (err) {
+    toast.error(err)
     return
   }
-  if (f.size > 5 * 1024 * 1024) {
-    toast.error('文件不能超过 5 MB')
-    return
+  try {
+    const rf = await uploadQuestionnaireFile(f)
+    editAnswers.value = { ...editAnswers.value, [qid]: rf.originalName }
+    editFileIds.value = { ...editFileIds.value, [qid]: rf.id }
+    toast.success('简历已更换：' + rf.originalName)
+  } catch (err) {
+    toast.error(err?.message || '上传失败')
   }
-  editAnswers.value[qid] = f.name
-  toast.success('简历已更换：' + f.name)
 }
 
-function submitEditApply() {
-  for (const q of mockQuestions) {
-    if (!q.required) continue
-    const v = editAnswers.value[q.id]
-    if (!v || (Array.isArray(v) && v.length === 0)) {
-      toast.error('请填写「' + q.title + '」')
-      return
-    }
+async function saveEditDraft() {
+  if (!editingApp.value?.jobPostId || !mockQuestions.value.length) return
+  try {
+    await saveDraftQuestionnaire(
+      editingApp.value.jobPostId,
+      mockQuestions.value,
+      editAnswers.value,
+      editFileIds.value
+    )
+    showEditApply.value = false
+    toast.success('草稿已保存')
+    await loadApplications()
+  } catch (e) {
+    toast.error(e?.message || '保存草稿失败')
   }
-  // 保存修改后的答案
-  if (editingApp.value) {
-    savedAnswers[editingApp.value.title] = JSON.parse(JSON.stringify(editAnswers.value))
-  }
-  showEditApply.value = false
-  toast.success('投递信息已更新')
 }
 
-function handleUpload(e) {
-  const file = e.target.files?.[0]
-  if (!file) return
-
-  const ext = file.name.split('.').pop().toLowerCase()
-  const allowTypes = ['pdf', 'doc', 'docx']
-
-  if (!allowTypes.includes(ext)) {
-    toast.error('仅支持 PDF、Word 格式')
-    e.target.value = ''
+async function submitEditApply() {
+  const errMsg = validateRequiredAnswers(mockQuestions.value, editAnswers.value, editFileIds.value)
+  if (errMsg) {
+    toast.error(errMsg)
     return
   }
-
-  if (file.size > 5 * 1024 * 1024) {
-    toast.error('文件不能超过 5 MB')
-    e.target.value = ''
-    return
+  try {
+    await submitQuestionnaire(
+      editingApp.value.jobPostId,
+      mockQuestions.value,
+      editAnswers.value,
+      editFileIds.value
+    )
+    showEditApply.value = false
+    toast.success('投递信息已更新')
+    await loadApplications()
+  } catch (e) {
+    toast.error(e?.message || '保存失败')
   }
+}
 
-  resumes.value.unshift({
-    name: file.name,
-    meta: `刚刚上传 · ${(file.size / 1024).toFixed(0)} KB · ${ext.toUpperCase()}`,
-    icon: ext === 'pdf' ? 'ti-file-type-pdf' : 'ti-file-type-doc',
-    file,
+const genderOpts = [
+  { v: 'MALE', l: '男' },
+  { v: 'FEMALE', l: '女' },
+  { v: 'OTHER', l: '其他' },
+]
+const politicalOpts = [
+  { v: 'MASSES', l: '群众' },
+  { v: 'LEAGUE_MEMBER', l: '共青团员' },
+  { v: 'PARTY_MEMBER', l: '中共党员' },
+  { v: 'OTHER', l: '其他' },
+]
+const eduOpts = [
+  { v: 'UNDERGRADUATE', l: '本科生' },
+  { v: 'ACADEMIC_MASTER', l: '学术硕士研究生' },
+  { v: 'PROFESSIONAL_MASTER', l: '专业硕士研究生' },
+  { v: 'DOCTORAL', l: '博士研究生' },
+]
+const mindsetOpts = [
+  { v: 'CONFIDENT', l: '比较有把握' },
+  { v: 'CAUTIOUSLY_OPTIMISTIC', l: '谨慎乐观' },
+  { v: 'LACK_OF_CONFIDENCE', l: '信心不足' },
+  { v: 'VERY_ANXIOUS', l: '非常焦虑' },
+  { v: 'ZEN_WAITING', l: '佛系等待' },
+]
+
+function emptyProfile() {
+  return {
+    userId: null,
+    realName: '',
+    gender: '',
+    birthDate: '',
+    politicalStatus: '',
+    phone: '',
+    email: '',
+    wechat: '',
+    hometown: '',
+    grade: '',
+    major: '',
+    eduLevel: '',
+    supervisor: '',
+    intentionOrder: '',
+    intentionCity: '',
+    intentionDream: '',
+    mindset: '',
+  }
+}
+
+function emptyResumeForm() {
+  return {
+    personalIntro: '',
+    basicInfo: '',
+    education: '',
+    internship: '',
+    campus: '',
+    awards: '',
+    skills: '',
+    portfolio: '',
+    remark: '',
+  }
+}
+
+const pageLoading = ref(true)
+const profileForm = ref(emptyProfile())
+const profileSnapshot = ref('')
+const resumeForm = ref(emptyResumeForm())
+const resumeSnapshot = ref('')
+const resumeFiles = ref([])
+const quotaUsedMb = ref('0')
+const quotaTotalMb = ref('30')
+const fileInput = ref(null)
+const showDeleteModal = ref(false)
+const deleteIndex = ref(null)
+
+const avatarChar = computed(() => {
+  const n = profileForm.value.realName?.trim()
+  return n ? n.charAt(0) : '同'
+})
+
+function pickProfile(p) {
+  if (!p) return emptyProfile()
+  return {
+    userId: p.userId ?? null,
+    realName: p.realName ?? '',
+    gender: p.gender ?? '',
+    birthDate: p.birthDate ?? '',
+    politicalStatus: p.politicalStatus ?? '',
+    phone: p.phone ?? '',
+    email: p.email ?? '',
+    wechat: p.wechat ?? '',
+    hometown: p.hometown ?? '',
+    grade: p.grade ?? '',
+    major: p.major ?? '',
+    eduLevel: p.eduLevel ?? '',
+    supervisor: p.supervisor ?? '',
+    intentionOrder: p.intentionOrder ?? '',
+    intentionCity: p.intentionCity ?? '',
+    intentionDream: p.intentionDream ?? '',
+    mindset: p.mindset ?? '',
+  }
+}
+
+function pickResume(r) {
+  if (!r) return emptyResumeForm()
+  return {
+    personalIntro: r.personalIntro ?? '',
+    basicInfo: r.basicInfo ?? '',
+    education: r.education ?? '',
+    internship: r.internship ?? '',
+    campus: r.campus ?? '',
+    awards: r.awards ?? '',
+    skills: r.skills ?? '',
+    portfolio: r.portfolio ?? '',
+    remark: r.remark ?? '',
+  }
+}
+
+function snapshotProfiles() {
+  profileSnapshot.value = JSON.stringify(profileForm.value)
+  resumeSnapshot.value = JSON.stringify(resumeForm.value)
+}
+
+function resetProfile() {
+  try {
+    profileForm.value = JSON.parse(profileSnapshot.value || '{}')
+    if (!profileForm.value || typeof profileForm.value !== 'object') profileForm.value = emptyProfile()
+  } catch {
+    profileForm.value = emptyProfile()
+  }
+}
+
+function resetResume() {
+  try {
+    resumeForm.value = JSON.parse(resumeSnapshot.value || '{}')
+    if (!resumeForm.value || typeof resumeForm.value !== 'object') resumeForm.value = emptyResumeForm()
+  } catch {
+    resumeForm.value = emptyResumeForm()
+  }
+}
+
+async function loadQuota() {
+  try {
+    const q = await apiJson('/user/resume/file/quota')
+    const used = Number(q?.usedBytes || 0)
+    const total = Number(q?.quotaBytes || 30 * 1024 * 1024)
+    quotaUsedMb.value = (used / (1024 * 1024)).toFixed(1)
+    quotaTotalMb.value = (total / (1024 * 1024)).toFixed(0)
+  } catch {
+    quotaUsedMb.value = '0'
+    quotaTotalMb.value = '30'
+  }
+}
+
+async function loadAll() {
+  pageLoading.value = true
+  try {
+    const [prof, res, files] = await Promise.all([
+      apiJson('/user/profile/get'),
+      apiJson('/user/resume/get'),
+      apiJson('/user/resume/file/list'),
+    ])
+    profileForm.value = pickProfile(prof)
+    resumeForm.value = pickResume(res)
+    resumeFiles.value = Array.isArray(files) ? files : []
+    snapshotProfiles()
+    await loadQuota()
+  } catch (e) {
+    toast.error(e?.message || '加载失败')
+  } finally {
+    pageLoading.value = false
+  }
+}
+
+async function saveProfile() {
+  const body = { ...profileForm.value }
+  delete body.userId
+  Object.keys(body).forEach((k) => {
+    if (body[k] === '') body[k] = null
   })
-
-  toast.success('简历上传成功')
-  e.target.value = ''
+  try {
+    await apiJson('/user/profile/save', { method: 'PUT', body: JSON.stringify(body) })
+    toast.success('资料已保存')
+    await loadAll()
+  } catch (e) {
+    toast.error(e?.message || '保存失败')
+  }
 }
 
-function previewResume(r) {
-  if (!r.file) {
-    toast.info?.('示例简历暂无可预览文件') || toast.success('示例简历暂无可预览文件')
-    return
+async function saveResume() {
+  const body = { ...resumeForm.value }
+  try {
+    await apiJson('/user/resume/save', { method: 'PUT', body: JSON.stringify(body) })
+    toast.success('简历正文已保存')
+    await loadAll()
+  } catch (e) {
+    toast.error(e?.message || '保存失败')
   }
-  window.open(URL.createObjectURL(r.file), '_blank')
 }
 
-function downloadResume(r) {
-  if (!r.file) {
-    toast.info?.('示例简历暂无可下载文件') || toast.success('示例简历暂无可下载文件')
+function fileIcon(r) {
+  const n = (r.originalName || '').toLowerCase()
+  if (n.endsWith('.pdf')) return 'ti-file-type-pdf'
+  if (n.endsWith('.png') || n.endsWith('.jpg') || n.endsWith('.jpeg')) return 'ti-photo'
+  return 'ti-file-type-doc'
+}
+
+function fileMetaLine(r) {
+  const kb = r.fileSize != null ? `${(Number(r.fileSize) / 1024).toFixed(0)} KB` : ''
+  const t = r.createdAt ? String(r.createdAt).replace('T', ' ').slice(0, 16) : ''
+  return [t && `上传于 ${t}`, kb].filter(Boolean).join(' · ')
+}
+
+async function handleUpload(e) {
+  const file = e.target.files?.[0]
+  if (e.target) e.target.value = ''
+  if (!file) return
+  const err = validateQuestionnaireUploadFile(file)
+  if (err) {
+    toast.error(err)
     return
   }
-  const url = URL.createObjectURL(r.file)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = r.name
-  a.click()
-  URL.revokeObjectURL(url)
+  const fd = new FormData()
+  fd.append('file', file)
+  try {
+    await apiForm('/user/resume/file/upload', fd)
+    toast.success('上传成功')
+    await loadAll()
+  } catch (err) {
+    toast.error(err?.message || '上传失败')
+  }
+}
+
+async function downloadResumeFile(r) {
+  try {
+    const blob = await apiDownloadBlob(`/user/resume/file/${r.id}/download`)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = r.originalName || 'resume'
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    toast.error(e?.message || '下载失败')
+  }
 }
 
 function deleteResume(index) {
@@ -382,17 +776,29 @@ function deleteResume(index) {
   showDeleteModal.value = true
 }
 
-function confirmDeleteResume() {
+async function confirmDeleteResume() {
   if (deleteIndex.value === null) return
-  resumes.value.splice(deleteIndex.value, 1)
-  toast.success('简历已删除')
-  cancelDeleteResume()
+  const r = resumeFiles.value[deleteIndex.value]
+  if (!r?.id) return
+  try {
+    await apiJson(`/user/resume/file/${r.id}`, { method: 'DELETE' })
+    toast.success('已删除')
+    cancelDeleteResume()
+    await loadAll()
+  } catch (e) {
+    toast.error(e?.message || '删除失败')
+  }
 }
 
 function cancelDeleteResume() {
   showDeleteModal.value = false
   deleteIndex.value = null
 }
+
+onMounted(() => {
+  loadAll()
+  if (view.value === 'applications') loadApplications()
+})
 </script>
 
 <style scoped>
@@ -453,6 +859,9 @@ function cancelDeleteResume() {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem 1.55rem;
+}
+.grid-2 .span-2 {
+  grid-column: 1 / -1;
 }
 .form-label {
   display: block;

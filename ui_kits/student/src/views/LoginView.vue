@@ -1,5 +1,6 @@
 <template>
   <div class="login-page">
+    <AppToast />
     <div class="login-top-bar" />
 
     <!-- 背景纹理 -->
@@ -123,9 +124,10 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import AppToast from '@/components/AppToast.vue'
+import { useToast } from '@/composables/useToast'
 
-const router = useRouter()
+const toast = useToast()
 
 const tab = ref('uis') // 'uis' | 'admin'
 const showPwd = ref(false)
@@ -137,13 +139,11 @@ const form = reactive({
 })
 
 const loginUIS = () => {
-  // 这里接 UIS 跳转逻辑；演示用直接进入用户端
-  router.push('/home')
+  window.location.assign('/fudan/login')
 }
 
 const loginAdmin = () => {
-  // 这里接管理员鉴权逻辑
-  router.push('/admin')
+  toast.show('后端未提供学生端账号密码登录；管理端请走内网 internal API 或后续管理员鉴权方案。', 'default', 4200)
 }
 </script>
 

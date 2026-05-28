@@ -108,9 +108,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import UserNavbar from '@/components/UserNavbar.vue'
 import AppToast from '@/components/AppToast.vue'
+import { apiJson } from '@/lib/api'
+import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
-const BASE = 'http://localhost:9100'
+const toast = useToast()
+/** 仅开发环境在后端不可用时回退 mock，生产环境关闭 */
+const allowMockFallback = import.meta.env.DEV && import.meta.env.VITE_DISABLE_JOB_MOCK !== '1'
 const offset = ref(0)
 const CARD_W = 208
 const featured = ref([])
@@ -169,25 +173,40 @@ const MOCK_JOBS = [
 async function fetchJobs() {
   loading.value = true
   try {
-    const params = new URLSearchParams({ page: page.value, size: pageSize })
+    const params = new URLSearchParams({ page: String(page.value), size: String(pageSize) })
     if (kw.value) params.set('keyword', kw.value)
     if (cityF.value) params.set('workCity', cityF.value)
     else if (provinceF.value) params.set('workCity', provinceF.value)
-    const res = await fetch(`${BASE}/job/list?${params}`)
-    const data = await res.json()
-    if (data.code === 200) {
-      const records = data.data?.records || data.data?.list || []
-      total.value = data.data?.total || records.length
-      jobs.value = records.map(j => ({
-        id: j.id, abbr: abbrOf(j.companyName), title: j.positionName,
-        company: j.companyName, city: j.workCity || '', target: recruitTypeLabel(j.recruitType), dl: formatDate(j.workEndDate),
-      }))
-      if (page.value === 1 && featured.value.length === 0) {
-        featured.value = jobs.value.slice(0, 6).map(j => ({ id: j.id, company: j.company, title: j.title }))
-      }
-    } else { throw new Error('empty') }
+    if (targetF.value === '应届生') params.set('recruitType', 'CAMPUS_RECRUITMENT')
+    if (targetF.value === '实习生') params.set('recruitType', 'DAILY_INTERNSHIP')
+    const pageResult = await apiJson(`/job/list?${params}`)
+    const records = pageResult?.list || pageResult?.records || []
+    total.value = pageResult?.total ?? records.length
+    let mapped = records.map(j => ({
+      id: j.id,
+      abbr: abbrOf(j.companyName),
+      title: j.positionName,
+      company: j.companyName,
+      city: j.workCity || '',
+      target: recruitTypeLabel(j.recruitType),
+      dl: formatDate(j.workEndDate),
+      _end: j.workEndDate || '',
+      _pub: (j.createdAt && String(j.createdAt).slice(0, 10)) || '',
+    }))
+    if (sortBy.value === 'deadline') {
+      mapped = mapped.slice().sort((a, b) => (a._end || '').localeCompare(b._end || ''))
+    }
+    jobs.value = mapped.map(({ _end, _pub, ...rest }) => rest)
+    if (page.value === 1 && featured.value.length === 0) {
+      featured.value = jobs.value.slice(0, 6).map(j => ({ id: j.id, company: j.company, title: j.title }))
+    }
   } catch (e) {
-    // 后端未启动时使用 mock 数据
+    if (!allowMockFallback) {
+      console.error(e)
+      toast.error(e?.message || '加载岗位失败')
+      jobs.value = []
+      total.value = 0
+    } else {
     let filtered = [...MOCK_JOBS]
     if (kw.value) filtered = filtered.filter(j => j.title.includes(kw.value) || j.company.includes(kw.value))
     if (cityF.value) filtered = filtered.filter(j => j.city === cityF.value)
@@ -208,6 +227,7 @@ async function fetchJobs() {
     jobs.value = filtered.slice(start, start + pageSize)
     if (page.value === 1 && featured.value.length === 0) {
       featured.value = MOCK_JOBS.filter(j => j.rec).map(j => ({ id: j.id, company: j.company, title: j.title }))
+    }
     }
   }
   finally { loading.value = false }

@@ -34,6 +34,15 @@ The platform's purpose, taken directly from the project brief: replace ad-hoc �
 
 The design system focuses on those pages. We do **not** design for: mobile breakpoints, marketing pages, analytics dashboards beyond the four admin stat-cards already in the source, slide decks, or login flows beyond the existing UIS / admin role-cards. If any of those become in-scope, ask before designing.
 
+## 生产部署
+
+```bash
+cp deploy/env.frontend.example .env.frontend   # 可选
+./deploy/scripts/mac-build-frontend.sh         # Mac 构建 + HTTP :8766
+```
+
+Python 网关机拉取静态资源见 [`deploy/scripts/README.md`](deploy/scripts/README.md)。后端 API / Nginx 网关见 [FusionCareer-Backend](https://github.com/AUSIO2/FusionCareer-Backend) 的 `deploy/`。
+
 ## Index
 
 | File | What it has |
@@ -42,6 +51,7 @@ The design system focuses on those pages. We do **not** design for: mobile break
 | `brief.md` | The project brief (PDF) transcribed and translated. Source of truth for *what the platform must do*. |
 | `preview/` | 18 small HTML preview cards rendered in the Design System tab. One concept per card. |
 | `ui_kits/student/` | **Runnable Vue 3 + Vite project** — every screen in the brief, end-to-end. `cd ui_kits/student && npm install && npm run dev`. Open in VSCode with the Vue (Volar) extension. |
+| `deploy/scripts/` | Mac 构建 dist、Python 机部署脚本（`mac-build-frontend.sh` 等）。 |
 | `SKILL.md` | Agent-Skill manifest so an LLM agent can self-onboard to this brand. |
 | `assets/` | *(intentionally empty — the platform ships no logo file, no photography, and no icon SVGs; it composes its brand mark live from `ti-map-pin-filled` inside a crimson disc. See `preview/brand-logo.html`.)* |
 | `slides/` | *(not built — no slide template was provided)* |

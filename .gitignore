@@ -19,3 +19,6 @@ yarn-error.log*
 # Local uploads / scratch
 uploads/
 .cache/
+
+# Deploy secrets
+.env.frontend
