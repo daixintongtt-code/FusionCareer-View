@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<style>
+  html, body { background: var(--bg); margin: 0; }
+  .card-frame { padding: 20px 22px; background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: var(--r-lg); margin: 16px;
+    box-shadow: var(--shadow-sm); }
+  .row { display: grid; grid-template-columns: 1fr auto; align-items: baseline;
+    column-gap: 18px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .row:last-child { border-bottom: none; }
+  .spec { font-family: var(--font-sans); color: var(--ink); }
+  .meta { font-family: var(--font-sans); font-size: 11px; color: var(--ink-3);
+    font-variant-numeric: tabular-nums; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="card-frame">
+  <div class="row">
+    <div class="spec" style="font-size:17px;font-weight:600">岗位列表</div>
+    <div class="meta">Sans · 600 · 17px · page h1</div>
+  </div>
+  <div class="row">
+    <div class="spec" style="font-size:13.5px;font-weight:600">学院本周推荐岗位</div>
+    <div class="meta">Sans · 600 · 13.5px · section</div>
+  </div>
+  <div class="row">
+    <div class="spec" style="font-size:13px">立即投递简历</div>
+    <div class="meta">Sans · 500 · 13px · button / control</div>
+  </div>
+  <div class="row">
+    <div class="spec" style="font-size:13px;color:var(--ink-2);line-height:1.6">您的新闻传播背景、校媒经历与该岗位要求高度吻合。</div>
+    <div class="meta">Sans · 400 · 13px · body</div>
+  </div>
+  <div class="row">
+    <div class="spec" style="font-size:11.6px;color:var(--ink-2)">2025-05-15 · 420 KB</div>
+    <div class="meta">Sans · 400 · 11.6px · meta</div>
+  </div>
+  <div class="row">
+    <div class="spec" style="font-size:10px;color:var(--ink-3);letter-spacing:0.08em;text-transform:uppercase;font-weight:600">目标岗位</div>
+    <div class="meta">Sans · 600 · 10px · eyebrow</div>
+  </div>
+</div>
+</body>
+</html>

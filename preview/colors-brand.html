@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+<style>
+  html, body { background: var(--bg); margin: 0; }
+  .card-frame { padding: 18px 20px; }
+  .row { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; }
+  .swatch {
+    flex: 1; min-width: 0;
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .swatch .chip {
+    height: 64px;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    padding: 8px 10px;
+    color: #fff;
+    font-family: var(--font-sans);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+  .swatch .meta {
+    padding: 8px 10px 9px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    color: var(--ink-2);
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .swatch .meta b { color: var(--ink); font-weight: 600; }
+  .swatch .hex { color: var(--ink-3); font-size: 10px; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+
+  .swatch.light .chip { color: var(--ink); }
+  .swatch.bordered .chip { border-bottom: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<div class="card-frame">
+  <div class="row">
+    <div class="swatch">
+      <div class="chip" style="background:#9B2335">
+        <span>复旦红</span><span>PRIMARY</span>
+      </div>
+      <div class="meta"><b>--red</b><span class="hex">#9B2335</span></div>
+    </div>
+    <div class="swatch">
+      <div class="chip" style="background:#7D1B29">
+        <span>Hover</span><span>×</span>
+      </div>
+      <div class="meta"><b>--red-hover</b><span class="hex">#7D1B29</span></div>
+    </div>
+    <div class="swatch light bordered">
+      <div class="chip" style="background:#FDF2F3;color:#9B2335;border-bottom:1px solid rgba(155,35,53,0.25)">
+        <span>Light</span><span>fill</span>
+      </div>
+      <div class="meta"><b>--red-light</b><span class="hex">#FDF2F3</span></div>
+    </div>
+    <div class="swatch">
+      <div class="chip" style="background:#B8871E">
+        <span>金 / Gold</span><span>ADMIN</span>
+      </div>
+      <div class="meta"><b>--gold</b><span class="hex">#B8871E</span></div>
+    </div>
+    <div class="swatch light bordered">
+      <div class="chip" style="background:#FDF8EE;color:#B8871E;border-bottom:1px solid rgba(184,135,30,0.3)">
+        <span>Light</span><span>fill</span>
+      </div>
+      <div class="meta"><b>--gold-light</b><span class="hex">#FDF8EE</span></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+<style>
+  html, body { background: var(--bg); margin: 0; font-family: var(--font-sans); }
+  .frame { padding: 14px 18px; display:flex; flex-direction: column; gap: 10px; }
+  .job-card { background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 14px 18px;
+    display:flex; align-items:center; gap: 14px; box-shadow: var(--shadow-sm); }
+  .job-logo { width: 40px; height: 40px; border-radius: var(--r-md);
+    background: var(--bg-soft); border: 1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-serif); font-weight: 700; font-size: 16px; color: var(--ink); }
+  .body { flex:1; min-width:0; }
+  .title-row { display:flex; align-items:center; gap:8px; margin-bottom: 5px; }
+  .t { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .meta-row { display:flex; gap: 14px; flex-wrap: wrap; }
+  .meta-row span { display:flex; align-items:center; gap:4px;
+    font-size: 11.6px; color: var(--ink-2); }
+  .meta-row span  .side { display:flex; flex-direction:column; align-items: flex-end; gap: 5px; }
+  .badge { display:inline-flex; padding: .18rem .55rem;
+    border-radius: var(--r-full); font-size: 10.5px; font-weight: 500; }
+  .badge-red { background: var(--red-light); color: var(--red); }
+  .badge-green { background: var(--green-bg); color: var(--green); }
+  .dl { font-size: 10.5px; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="job-card">
+    <div class="job-logo">新</div>
+    <div class="body">
+      <div class="title-row">
+        <span class="t">新媒体编辑记者（2025校招）</span>
+        <span class="badge badge-red">学院推荐</span>
+      </div>
+      <div class="meta-row">
+        <span><i class="ti ti-building"></i>新华社上海分社</span>
+        <span><i class="ti ti-map-pin"></i>上海</span>
+        <span><i class="ti ti-users"></i>应届生</span>
+      </div>
+    </div>
+    <div class="side">
+      <span class="badge badge-green">媒体记者</span>
+      <span class="dl">截止 06-30</span>
+    </div>
+  </div>
+  <div class="job-card">
+    <div class="job-logo">澎</div>
+    <div class="body">
+      <div class="title-row"><span class="t">数据新闻记者</span></div>
+      <div class="meta-row">
+        <span><i class="ti ti-building"></i>澎湃新闻</span>
+        <span><i class="ti ti-map-pin"></i>上海</span>
+      </div>
+    </div>
+    <div class="side">
+      <span class="badge" style="background:var(--blue-bg);color:var(--blue)">数据分析</span>
+      <span class="dl">截止 06-20</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

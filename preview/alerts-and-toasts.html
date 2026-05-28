@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+<style>
+  html, body { background: var(--bg); margin: 0; font-family: var(--font-sans); }
+  .frame { padding: 14px 18px; display:flex; flex-direction:column; gap: 9px; }
+  .alert { padding: .65rem .9rem; border-radius: var(--r-md); font-size: 12.5px;
+    display:flex; align-items:flex-start; gap:.5rem; line-height: 1.55; }
+  .alert i { margin-top: 2px; }
+  .alert-info    { background: var(--blue-bg);   color: var(--blue); }
+  .alert-success { background: var(--green-bg);  color: var(--green); }
+  .alert-warning { background: var(--amber-bg);  color: var(--amber); }
+  .alert-red     { background: var(--red-light); color: var(--red); }
+  .toast-wrap { display:flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .toast { background: var(--ink); color:#fff; padding:.5rem .9rem;
+    border-radius: var(--r-md); font-size: 12px; display:flex; align-items:center; gap:.5rem;
+    box-shadow: var(--shadow-md); }
+  .toast.success { background: var(--green); }
+  .toast.error   { background: var(--red); }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="alert alert-info"><i class="ti ti-bulb"></i>该岗位截止日期为 2025-07-01，请尽快完成投递。</div>
+  <div class="alert alert-success"><i class="ti ti-circle-check"></i>简历已上传成功，可在「我的投递」中查看投递状态。</div>
+  <div class="alert alert-warning"><i class="ti ti-alert-triangle"></i>「岗位描述」字段为必填，请补充后再提交审核</div>
+  <div class="alert alert-red"><i class="ti ti-x-circle"></i>UIS 认证失败，请重新登录</div>
+  <div class="toast-wrap">
+    <div class="toast success"><i class="ti ti-check"></i> 审核通过，已上线</div>
+    <div class="toast error"><i class="ti ti-x"></i> 请填写岗位名称</div>
+    <div class="toast"><i class="ti ti-info-circle"></i> 功能开发中</div>
+  </div>
+</div>
+</body>
+</html>

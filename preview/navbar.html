@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+<style>
+  html, body { background: var(--bg); margin: 0; font-family: var(--font-sans); }
+  .frame { padding: 14px 18px; }
+  .navbar { background: rgba(255,255,255,0.92); backdrop-filter: blur(10px);
+    border: 1px solid var(--border); border-radius: var(--r-lg); height: 60px;
+    display:flex; align-items:center; padding: 0 18px; gap: 14px; box-shadow: var(--shadow-sm); }
+  .brand { display:flex; align-items:center; gap:.6rem; }
+  .brand-dot { width: 32px; height: 32px; border-radius: 50%;
+    background: var(--red-light); border: 1.5px solid var(--red-border);
+    display:flex; align-items:center; justify-content:center; }
+  .brand-dot i { color: var(--red); font-size: 0.95rem; }
+  .brand-zh { font-family: var(--font-serif); font-size: 15px; font-weight: 700; color: var(--red); line-height: 1.1; }
+  .brand-en { font-size: 9.5px; color: var(--gold); letter-spacing: .12em; text-transform: uppercase; }
+  .nav-links { display:flex; gap: 2px; flex: 1; }
+  .nav-link { display:flex; align-items:center; gap:.35rem;
+    padding:.4rem .8rem; border-radius: var(--r-md);
+    font-size: 12.5px; font-weight: 500; color: var(--ink-2);
+    background: transparent; border: none; cursor: pointer; }
+  .nav-link.active { background: var(--red-light); color: var(--red); }
+  .nav-avatar { width: 32px; height: 32px; border-radius: 50%;
+    background: var(--red-light); border: 1.5px solid var(--red-border);
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-serif); font-size: 12px; font-weight: 700; color: var(--red); }
+  .top-bar { height: 4px; background: var(--red); border-radius: 4px 4px 0 0; margin-bottom: -1px; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="top-bar"></div>
+  <div class="navbar">
+    <div class="brand">
+      <div class="brand-dot"><i class="ti ti-map-pin-filled"></i></div>
+      <div>
+        <div class="brand-zh">复新生涯</div>
+        <div class="brand-en">FusionCareer</div>
+      </div>
+    </div>
+    <div class="nav-links">
+      <button class="nav-link active"><i class="ti ti-briefcase"></i> 岗位</button>
+      <button class="nav-link"><i class="ti ti-user"></i> 个人中心</button>
+    </div>
+    <div class="nav-avatar">李</div>
+  </div>
+</div>
+</body>
+</html>

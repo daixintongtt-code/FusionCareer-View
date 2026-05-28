@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<style>
+  html, body { background: var(--bg); margin: 0; }
+  .card-frame { padding: 18px 20px; }
+  .row { display:flex; gap:12px; }
+  .swatch { flex:1; border-radius: var(--r-md); border:1px solid var(--border); overflow:hidden; background:#fff; }
+  .pair { height: 64px; display:flex; }
+  .pair > .bg { flex:1; display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-sans); font-size: 12px; font-weight: 500; }
+  .pair > .fg { width: 38%; display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-sans); font-size: 12px; font-weight: 600; color:#fff; }
+  .meta { padding: 7px 10px 8px; font-family: var(--font-sans); font-size: 11px;
+    color: var(--ink-2); display:flex; justify-content:space-between; align-items:baseline;
+    border-top:1px solid var(--border); }
+  .hex { color: var(--ink-3); font-size:10px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="card-frame">
+  <div class="row">
+    <div class="swatch">
+      <div class="pair">
+        <div class="bg" style="background:#EAF4EE;color:#1E6636">已上线</div>
+        <div class="fg" style="background:#1E6636">Success</div>
+      </div>
+      <div class="meta"><b>green</b><span class="hex">#1E6636 · #EAF4EE</span></div>
+    </div>
+    <div class="swatch">
+      <div class="pair">
+        <div class="bg" style="background:#FEF4E0;color:#7A4F00">待审核</div>
+        <div class="fg" style="background:#7A4F00">Warn</div>
+      </div>
+      <div class="meta"><b>amber</b><span class="hex">#7A4F00 · #FEF4E0</span></div>
+    </div>
+    <div class="swatch">
+      <div class="pair">
+        <div class="bg" style="background:#EAF0FB;color:#1B4F9C">信息提示</div>
+        <div class="fg" style="background:#1B4F9C">Info</div>
+      </div>
+      <div class="meta"><b>blue</b><span class="hex">#1B4F9C · #EAF0FB</span></div>
+    </div>
+    <div class="swatch">
+      <div class="pair">
+        <div class="bg" style="background:#FDF2F3;color:#9B2335">学院推荐</div>
+        <div class="fg" style="background:#9B2335">Danger</div>
+      </div>
+      <div class="meta"><b>red</b><span class="hex">#9B2335 · #FDF2F3</span></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

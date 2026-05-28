@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<style>
+  html, body { background: var(--bg); margin: 0; }
+  .card-frame { padding: 18px 20px; }
+  .row { display: flex; gap: 12px; }
+  .swatch { flex: 1; border-radius: var(--r-md); border: 1px solid var(--border); overflow: hidden; }
+  .chip { height: 64px; display:flex; align-items:flex-end; padding: 8px 10px;
+    font-family: var(--font-sans); font-size: 11px; color: var(--ink); }
+  .meta { padding: 8px 10px 9px; font-family: var(--font-sans); font-size: 11px;
+    color: var(--ink-2); display:flex; justify-content:space-between; align-items:baseline;
+    background: var(--bg-card); border-top: 1px solid var(--border); }
+  .meta b { color: var(--ink); font-weight:600; }
+  .hex { color: var(--ink-3); font-size:10px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="card-frame">
+  <div class="row">
+    <div class="swatch">
+      <div class="chip" style="background:#F5F3EF">Page / canvas</div>
+      <div class="meta"><b>--bg</b><span class="hex">#F5F3EF</span></div>
+    </div>
+    <div class="swatch">
+      <div class="chip" style="background:#FFFFFF;border-bottom:1px solid var(--border)">Cards</div>
+      <div class="meta"><b>--bg-card</b><span class="hex">#FFFFFF</span></div>
+    </div>
+    <div class="swatch">
+      <div class="chip" style="background:#F9F8F6">Soft fills / table heads</div>
+      <div class="meta"><b>--bg-soft</b><span class="hex">#F9F8F6</span></div>
+    </div>
+    <div class="swatch">
+      <div class="chip" style="background:#EDECEA">Sunken / hover</div>
+      <div class="meta"><b>--bg-sunken</b><span class="hex">#EDECEA</span></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

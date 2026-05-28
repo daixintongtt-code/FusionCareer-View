@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+<style>
+  html, body { background: var(--bg); margin: 0; font-family: var(--font-sans); }
+  .frame { padding: 18px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display:flex; flex-direction:column; gap:.35rem; }
+  .form-label { font-size: 12px; font-weight: 500; color: var(--ink-2); }
+  .form-label .req { color: var(--red); margin-left: 2px; }
+  .form-control { padding: .6rem .875rem; border: 1px solid var(--border-mid);
+    border-radius: var(--r-md); background: var(--bg-card); color: var(--ink);
+    font-size: 13px; outline: none; font-family: var(--font-sans); width: 100%;
+    box-sizing: border-box; }
+  .form-control::placeholder { color: var(--ink-3); }
+  .form-control.focused { border-color: var(--red); box-shadow: 0 0 0 3px rgba(155,35,53,.1); }
+  select.form-control { appearance:none; padding-right: 1.8rem;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238C8880' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right .6rem center; }
+  .upload-zone { border:1.5px dashed var(--border-mid); border-radius: var(--r-lg);
+    padding: 1rem; display:flex; flex-direction: column; align-items:center; gap:.3rem;
+    text-align:center; color: var(--ink-3); }
+  .upload-zone i { font-size: 1.4rem; color: var(--ink-3); }
+  .uz-title { font-size: 12.5px; font-weight: 500; color: var(--ink-2); }
+  .uz-hint { font-size: 11px; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="form-group">
+    <label class="form-label">岗位名称 <span class="req">*</span></label>
+    <input class="form-control" value="新媒体编辑记者（2025校招）" />
+  </div>
+  <div class="form-group">
+    <label class="form-label">工作城市</label>
+    <select class="form-control"><option>上海</option></select>
+  </div>
+  <div class="form-group">
+    <label class="form-label">关键词搜索</label>
+    <input class="form-control focused" placeholder="搜索岗位、公司、行业关键词…" />
+  </div>
+  <div class="form-group">
+    <label class="form-label">附件上传</label>
+    <div class="upload-zone">
+      <i class="ti ti-cloud-upload"></i>
+      <div class="uz-title">拖拽文件至此，或点击上传</div>
+      <div class="uz-hint">PDF、Word、Excel，单文件 ≤ 10 MB</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

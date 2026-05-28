@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<style>
+  html, body { background: var(--bg); margin: 0; font-family: var(--font-sans); }
+  .frame { padding: 18px 20px; }
+  .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+  .swatch { background: var(--bg-card); border: 1px solid var(--border);
+    aspect-ratio: 1.5/1; display:flex; align-items:flex-end; padding: 6px 8px;
+    color: var(--ink-3); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  .label { font-size: 10px; color: var(--ink-3); letter-spacing: 0.06em;
+    text-transform: uppercase; font-weight: 600; margin-bottom: 6px; }
+  .shadow-row { display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .shadow { background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 14px 16px; height: 56px;
+    display:flex; align-items:center; gap:8px; font-size: 12px; color: var(--ink-2); }
+  .shadow.sm { box-shadow: var(--shadow-sm); }
+  .shadow.md { box-shadow: var(--shadow-md); }
+  .shadow b { color: var(--ink); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="label">Radii</div>
+  <div class="row">
+    <div class="swatch" style="border-radius:6px">6 · sm</div>
+    <div class="swatch" style="border-radius:10px">10 · md</div>
+    <div class="swatch" style="border-radius:14px">14 · lg</div>
+    <div class="swatch" style="border-radius:20px">20 · xl</div>
+    <div class="swatch" style="border-radius:9999px">∞ · full</div>
+  </div>
+  <div class="label">Shadows</div>
+  <div class="shadow-row">
+    <div class="shadow sm"><b>--shadow-sm</b> · 0 1px 4px / 0.08 · default card</div>
+    <div class="shadow md"><b>--shadow-md</b> · 0 4px 16px / 0.10 · modal &amp; lift</div>
+  </div>
+</div>
+</body>
+</html>

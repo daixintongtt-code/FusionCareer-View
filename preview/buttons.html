@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+<style>
+  html, body { background: var(--bg); margin: 0; font-family: var(--font-sans); }
+  .frame { padding: 18px 20px; }
+  .group { display:flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .btn { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem 1.1rem;
+    border-radius: var(--r-md); font-size: 13px; font-weight: 500;
+    border: 1px solid transparent; transition: all var(--t); white-space: nowrap; line-height: 1; cursor:pointer; }
+  .btn-primary   { background: var(--red); color:#fff; border-color: var(--red); }
+  .btn-secondary { background: var(--bg-card); color: var(--ink-2); border-color: var(--border-mid); }
+  .btn-ghost     { background: transparent; color: var(--ink-2); }
+  .btn-red-soft  { background: var(--red-light); color: var(--red); border-color: var(--red-border); }
+  .btn-gold      { background: var(--gold); color:#fff; }
+  .btn-lg        { padding:.75rem 1.5rem; font-size:14px; border-radius: var(--r-lg); }
+  .btn-sm        { padding:.35rem .8rem; font-size:12px; }
+  .btn-icon      { padding:.45rem; border-radius: var(--r-md); border:1px solid var(--border);
+                   background: var(--bg-card); color: var(--ink-3); }
+  .label { font-size: 10.5px; color: var(--ink-3); letter-spacing: 0.06em;
+    text-transform: uppercase; font-weight: 600; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="label">Primary actions</div>
+  <div class="group">
+    <button class="btn btn-primary btn-lg"><i class="ti ti-send"></i> 立即投递简历</button>
+    <button class="btn btn-primary"><i class="ti ti-search"></i> 搜索</button>
+    <button class="btn btn-primary btn-sm">提交审核</button>
+    <button class="btn btn-gold"><i class="ti ti-shield-lock"></i> 管理员登录</button>
+  </div>
+  <div class="label">Secondary / soft / ghost / icon</div>
+  <div class="group">
+    <button class="btn btn-secondary"><i class="ti ti-device-floppy"></i> 保存草稿</button>
+    <button class="btn btn-red-soft btn-sm"><i class="ti ti-edit"></i> 完善个人资料</button>
+    <button class="btn btn-ghost btn-sm">查看全部 <i class="ti ti-arrow-right"></i></button>
+    <button class="btn btn-icon"><i class="ti ti-chevron-left"></i></button>
+    <button class="btn btn-icon"><i class="ti ti-chevron-right"></i></button>
+  </div>
+</div>
+</body>
+</html>
