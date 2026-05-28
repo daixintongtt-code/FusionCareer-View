@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+<style>
+  html, body { background: var(--bg); margin: 0; font-family: var(--font-sans); }
+  .frame { padding: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: center; }
+  .logo-box { background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 18px; display:flex; flex-direction:column;
+    align-items:center; gap: 10px; box-shadow: var(--shadow-sm); }
+  .logo-dot { width: 56px; height: 56px; border-radius: 50%;
+    background: var(--bg-card); border: 2px solid var(--red-border);
+    box-shadow: var(--shadow-md); display:flex; align-items:center; justify-content:center;
+    font-size: 26px; color: var(--red); }
+  .logo-dot.small { width: 32px; height: 32px; background: var(--red-light);
+    border: 1.5px solid var(--red-border); box-shadow: none; font-size: 15px; }
+  .logo-dot.gold { background: var(--gold-light); border-color: rgba(184,135,30,.3); color: var(--gold); }
+  .brand-zh { font-family: var(--font-serif); font-weight: 700; color: var(--red); }
+  .brand-en { font-size: 10px; color: var(--gold); letter-spacing: 0.18em; text-transform: uppercase; margin-top: 2px; }
+  .lockup { display:flex; align-items:center; gap: 8px; }
+  .lockup .brand-zh { font-size: 16px; }
+  .lockup .brand-en { font-size: 9px; margin: 0; }
+  .label { font-size: 10px; color: var(--ink-3); letter-spacing: 0.06em;
+    text-transform: uppercase; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="logo-box">
+    <div class="logo-dot"><i class="ti ti-map-pin-filled"></i></div>
+    <div style="text-align:center">
+      <div class="brand-zh" style="font-size:22px">复新生涯</div>
+      <div class="brand-en">FusionCareer</div>
+    </div>
+    <div class="label">Primary</div>
+  </div>
+  <div class="logo-box">
+    <div class="lockup">
+      <div class="logo-dot small"><i class="ti ti-map-pin-filled"></i></div>
+      <div>
+        <div class="brand-zh">复新生涯</div>
+        <div class="brand-en">FusionCareer</div>
+      </div>
+    </div>
+    <div class="label">Navbar lockup</div>
+  </div>
+  <div class="logo-box">
+    <div class="lockup">
+      <div class="logo-dot small gold"><i class="ti ti-settings-2"></i></div>
+      <div>
+        <div class="brand-zh" style="color:var(--gold)">复新生涯</div>
+        <div class="brand-en" style="color:var(--gold)">Admin Console</div>
+      </div>
+    </div>
+    <div class="label">Admin variant</div>
+  </div>
+</div>
+</body>
+</html>

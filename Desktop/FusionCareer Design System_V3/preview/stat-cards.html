@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<style>
+  html, body { background: var(--bg); margin: 0; font-family: var(--font-sans); }
+  .frame { padding: 18px 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .stat { background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 14px 16px; }
+  .stat-label { font-size: 11px; color: var(--ink-2); font-weight: 500; margin-bottom: 4px; }
+  .stat-num { font-size: 24px; font-weight: 700; color: var(--ink); line-height: 1;
+    font-family: var(--font-serif); }
+  .stat-sub { font-size: 10.5px; color: var(--ink-3); margin-top: 4px; }
+  .stat.c-red   .stat-num { color: var(--red); }
+  .stat.c-gold  .stat-num { color: var(--gold); }
+  .stat.c-green .stat-num { color: var(--green); }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="stat"><div class="stat-label">在线岗位</div><div class="stat-num">48</div><div class="stat-sub">较上周 +5</div></div>
+  <div class="stat c-gold"><div class="stat-label">待审核</div><div class="stat-num">5</div><div class="stat-sub">需要处理</div></div>
+  <div class="stat c-green"><div class="stat-label">本月投递</div><div class="stat-num">127</div><div class="stat-sub">较上月 +23%</div></div>
+  <div class="stat"><div class="stat-label">注册学生</div><div class="stat-num">312</div><div class="stat-sub">本月新增 18</div></div>
+</div>
+</body>
+</html>

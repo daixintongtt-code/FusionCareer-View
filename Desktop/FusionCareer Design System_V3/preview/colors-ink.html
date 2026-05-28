@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<style>
+  html, body { background: var(--bg); margin: 0; }
+  .card-frame { padding: 18px 20px; }
+  .row { display: flex; gap: 12px; }
+  .swatch {
+    flex: 1; border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: var(--bg-card); overflow: hidden;
+  }
+  .chip { height: 56px; display:flex; align-items:flex-end; padding: 8px 10px;
+    font-family: var(--font-sans); font-size: 11px; }
+  .meta { padding: 8px 10px 9px; font-family: var(--font-sans); font-size: 11px;
+    color: var(--ink-2); display:flex; justify-content:space-between; align-items:baseline; }
+  .meta b { color: var(--ink); font-weight:600; }
+  .hex { color: var(--ink-3); font-size:10px; font-variant-numeric: tabular-nums; }
+  .sample-row { margin-top: 14px; padding: 12px 14px; background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: var(--r-md); }
+  .ink1 { color: var(--ink); font-family: var(--font-sans); font-size: 13px; }
+  .ink2 { color: var(--ink-2); font-family: var(--font-sans); font-size: 13px; }
+  .ink3 { color: var(--ink-3); font-family: var(--font-sans); font-size: 13px; }
+  .ink4 { color: var(--ink-4); font-family: var(--font-sans); font-size: 13px; }
+  .sample-row > div + div { margin-top: 3px; }
+</style>
+</head>
+<body>
+<div class="card-frame">
+  <div class="row">
+    <div class="swatch">
+      <div class="chip" style="background:#1C1A18;color:#fff">Primary text</div>
+      <div class="meta"><b>--ink</b><span class="hex">#1C1A18</span></div>
+    </div>
+    <div class="swatch">
+      <div class="chip" style="background:#504D48;color:#fff">Secondary</div>
+      <div class="meta"><b>--ink-2</b><span class="hex">#504D48</span></div>
+    </div>
+    <div class="swatch">
+      <div class="chip" style="background:#8C8880;color:#fff">Tertiary / placeholder</div>
+      <div class="meta"><b>--ink-3</b><span class="hex">#8C8880</span></div>
+    </div>
+    <div class="swatch">
+      <div class="chip" style="background:#E0DDD9;color:#1C1A18">Disabled / hairline</div>
+      <div class="meta"><b>--ink-4</b><span class="hex">#E0DDD9</span></div>
+    </div>
+  </div>
+  <div class="sample-row">
+    <div class="ink1">岗位详情 — 新华社 · 新媒体编辑记者</div>
+    <div class="ink2">2025 校招 · 上海 · 截止 06-30 · 应届毕业生优先</div>
+    <div class="ink3">已通过复旦 UIS 认证 · 420 KB</div>
+  </div>
+</div>
+</body>
+</html>
