@@ -1,0 +1,150 @@
+/* ================================================
+   复新生涯 FusionCareer — Design Tokens
+   Source of truth: extracted from FusionCareer-View/src/assets/css/main.css
+   ================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+:root {
+  /* ─── Brand ─── */
+  --red:        #9B2335;  /* 复旦红 / Fudan Red — primary */
+  --red-hover:  #7D1B29;
+  --red-light:  #FDF2F3;
+  --red-border: rgba(155, 35, 53, 0.25);
+  --gold:       #B8871E;  /* 金 — secondary (admin, "recommended") */
+  --gold-light: #FDF8EE;
+
+  /* ─── Ink scale (warm grey, not pure black) ─── */
+  --ink:        #1C1A18;
+  --ink-2:      #504D48;
+  --ink-3:      #8C8880;
+  --ink-4:      #E0DDD9;
+
+  /* ─── Surface ─── */
+  --bg:         #F5F3EF;  /* page — warm cream */
+  --bg-card:    #FFFFFF;
+  --bg-soft:    #F9F8F6;
+  --bg-sunken:  #EDECEA;
+
+  /* ─── Hairlines ─── */
+  --border:     rgba(28, 26, 24, 0.10);
+  --border-mid: rgba(28, 26, 24, 0.18);
+
+  /* ─── Semantic ─── */
+  --green:      #1E6636;  --green-bg: #EAF4EE;
+  --amber:      #7A4F00;  --amber-bg: #FEF4E0;
+  --blue:       #1B4F9C;  --blue-bg:  #EAF0FB;
+  /* danger reuses --red / --red-light */
+
+  /* ─── Radii ─── */
+  --r-sm:   6px;
+  --r-md:  10px;
+  --r-lg:  14px;
+  --r-xl:  20px;
+  --r-full: 9999px;
+
+  /* ─── Shadows ─── */
+  --shadow-sm: 0 1px 4px rgba(28, 26, 24, 0.08);   /* default card */
+  --shadow-md: 0 4px 16px rgba(28, 26, 24, 0.10);  /* modal, hover-lift */
+
+  /* ─── Layout ─── */
+  --nav-h:     60px;
+  --sidebar-w: 210px;
+  --max-w:    1100px;
+
+  /* ─── Type ─── */
+  --font-serif: 'Noto Serif SC', 'Songti SC', serif;
+  --font-sans:  'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+
+  /* Sizes — root font-size is 15px, all rem values below are derived. */
+  --fs-xs:   0.67rem;   /* 10.1 — labels, badge text, very small caps */
+  --fs-sm:   0.773rem;  /* 11.6 — meta, table cells, secondary nav */
+  --fs-base: 0.833rem;  /* 12.5 — body small (tabs, alerts, chat) */
+  --fs-md:   0.867rem;  /* 13   — buttons, form controls, msg-bub */
+  --fs-lg:   0.9rem;    /* 13.5 — section heads */
+  --fs-xl:   1rem;      /* 15   — modal copy, brand-zh */
+  --fs-2xl:  1.15rem;   /* 17.3 — page h1 (admin), card h2 */
+  --fs-3xl:  1.6rem;    /* 24   — stat-num (serif) */
+  --fs-4xl:  1.9rem;    /* 28.5 — login brand mark */
+
+  --lh-tight:   1.1;
+  --lh-snug:    1.4;
+  --lh-normal:  1.6;
+  --lh-relaxed: 1.8;
+
+  /* ─── Motion ─── */
+  --t: 180ms ease;
+}
+
+/* ================================================
+   Semantic typography utilities
+   Pair these with the tokens above; do not invent new sizes.
+   ================================================ */
+
+html { font-size: 15px; -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font-sans); background: var(--bg); color: var(--ink); line-height: var(--lh-normal); }
+
+.h-display {                                 /* login brand mark        */
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size:   var(--fs-4xl);
+  color:       var(--red);
+  letter-spacing: 0.05em;
+  line-height: var(--lh-tight);
+}
+.h-brand {                                   /* navbar brand-zh         */
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size:   var(--fs-xl);
+  color:       var(--red);
+  line-height: var(--lh-tight);
+}
+.h-brand-en {                                /* "FUSIONCAREER" subtitle */
+  font-family: var(--font-sans);
+  font-size:   var(--fs-xs);
+  color:       var(--gold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.h-page {                                    /* admin page h1           */
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size:   var(--fs-2xl);
+  color:       var(--ink);
+}
+.h-section {                                 /* card section heading    */
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size:   var(--fs-md);
+  color:       var(--ink);
+}
+.h-stat {                                    /* stat-num — SERIF on purpose */
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size:   var(--fs-3xl);
+  color:       var(--ink);
+  line-height: var(--lh-tight);
+}
+.t-body {
+  font-family: var(--font-sans);
+  font-size:   var(--fs-md);
+  color:       var(--ink-2);
+  line-height: var(--lh-relaxed);
+}
+.t-secondary {
+  font-family: var(--font-sans);
+  font-size:   var(--fs-sm);
+  color:       var(--ink-2);
+}
+.t-meta {
+  font-family: var(--font-sans);
+  font-size:   var(--fs-xs);
+  color:       var(--ink-3);
+}
+.t-eyebrow {                                 /* "目标岗位" / sidebar-label */
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size:   var(--fs-xs);
+  color:       var(--ink-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
