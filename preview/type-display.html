@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<style>
+  html, body { background: var(--bg); margin: 0; }
+  .card-frame { padding: 20px 22px; background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: var(--r-lg); margin: 16px;
+    box-shadow: var(--shadow-sm); }
+  .row { display: grid; grid-template-columns: 1fr auto; align-items: baseline;
+    column-gap: 18px; row-gap: 6px; padding: 8px 0;
+    border-bottom: 1px solid var(--border); }
+  .row:last-child { border-bottom: none; }
+  .specimen { font-family: var(--font-serif); font-weight: 700; color: var(--red); }
+  .meta { font-family: var(--font-sans); font-size: 11px; color: var(--ink-3);
+    font-variant-numeric: tabular-nums; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="card-frame">
+  <div class="row">
+    <div class="specimen" style="font-size:28px;letter-spacing:0.05em;line-height:1.1">复新生涯</div>
+    <div class="meta">Serif · 700 · 28.5px · login brand</div>
+  </div>
+  <div class="row">
+    <div class="specimen" style="font-size:24px;color:var(--ink);line-height:1.1">92<span style="font-size:14px;color:var(--ink-3)"> %</span></div>
+    <div class="meta">Serif · 700 · 24px · stat numerals</div>
+  </div>
+  <div class="row">
+    <div class="specimen" style="font-size:17px;line-height:1.1">复新生涯</div>
+    <div class="meta">Serif · 700 · 17px · navbar brand</div>
+  </div>
+  <div class="row">
+    <div class="specimen" style="font-size:15px;color:var(--ink)">新华社上海分社</div>
+    <div class="meta">Serif · 700 · 15px · h2 / card title</div>
+  </div>
+</div>
+</body>
+</html>
