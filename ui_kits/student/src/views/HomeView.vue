@@ -7,10 +7,10 @@
       <div class="wrap">
 
         <!-- 推荐轮播 -->
-        <div class="card card-p" style="margin-bottom:1.1rem">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem">
-            <div class="section-label"><i class="ti ti-star-filled" style="color:var(--red)" /> 学院本周推荐岗位</div>
-            <div style="display:flex;gap:.3rem">
+        <div class="card card-p" style="margin-bottom:1rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+            <div class="section-label">★ 学院本周推荐岗位</div>
+            <div style="display:flex;gap:.25rem">
               <button class="btn btn-secondary btn-sm btn-icon" @click="slide(-1)"><i class="ti ti-chevron-left" /></button>
               <button class="btn btn-secondary btn-sm btn-icon" @click="slide(1)"><i class="ti ti-chevron-right" /></button>
             </div>
@@ -18,84 +18,170 @@
           <div class="carousel-wrap">
             <div class="carousel-track" :style="{transform:`translateX(${offset}px)`}">
               <div v-for="j in featured" :key="j.id" class="carousel-card" @click="router.push('/job/'+j.id)">
-                <div style="font-size:.7rem;color:var(--ink-2);margin-bottom:.3rem;display:flex;align-items:center;gap:.3rem"><i class="ti ti-building" />{{ j.company }}</div>
-                <div style="font-size:.867rem;font-weight:600;color:var(--ink);line-height:1.3">{{ j.title }}</div>
+                <div style="font-size:.7rem;color:var(--ink-2);margin-bottom:.25rem">{{ j.company }}</div>
+                <div style="font-size:.833rem;font-weight:600;color:var(--ink);line-height:1.3">{{ j.title }}</div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 主区域 -->
-        <div>
-          <div>
-            <!-- 搜索 -->
-            <div class="search-bar" style="margin-bottom:.875rem">
-              <i class="ti ti-search" style="color:var(--ink-3)" />
-              <input class="search-input" v-model="kw" placeholder="搜索岗位、公司、行业关键词…" />
-              <div class="search-sep" />
-              <select class="search-sel" v-model="provinceF" @change="cityF=''">
-                <option value="">全部省份</option>
-                <option v-for="p in Object.keys(provinces)" :key="p">{{ p }}</option>
-              </select>
-              <div class="search-sep" />
-              <select class="search-sel" v-model="cityF" :disabled="!provinceF">
-                <option value="">{{ provinceF ? '全部城市' : '请先选省份' }}</option>
-                <option v-for="c in (provinces[provinceF] || [])" :key="c">{{ c }}</option>
-              </select>
-              <div class="search-sep" />
-              <select class="search-sel" v-model="targetF">
-                <option value="">投递身份</option>
-                <option value="应届生">应届生</option>
-                <option value="实习生">实习生</option>
-              </select>
-              <button class="btn btn-primary" style="padding:.45rem 1rem;font-size:.833rem" @click="fetchJobs">
-                <i class="ti ti-search" /> 搜索
-              </button>
-            </div>
+        <!-- 搜索栏 -->
+        <div class="search-bar" style="margin-bottom:.875rem">
+          <i class="ti ti-search" style="color:var(--ink-3)" />
+          <input class="search-input" v-model="kw" placeholder="搜索岗位、公司、行业关键词…" @keyup.enter="fetchJobs" />
+          <div class="search-sep" />
+          <button class="btn btn-primary btn-sm" @click="fetchJobs">搜索</button>
+        </div>
 
-            <!-- 岗位数量 + 排序 -->
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem">
-              <span style="font-size:.773rem;color:var(--ink-3)">共 <strong>{{ total }}</strong> 个岗位</span>
-              <div class="sort-toggle">
-                <button :class="['sort-btn', sortBy==='newest' && 'active']" @click="setSort('newest')">
-                  <i class="ti ti-clock" /> 最新发布
-                </button>
-                <button :class="['sort-btn', sortBy==='deadline' && 'active']" @click="setSort('deadline')">
-                  <i class="ti ti-calendar-due" /> 截止日期
-                </button>
+        <!-- ══ 筛选面板 ══ -->
+        <div class="filter-panel">
+
+          <!-- 行 1：地区 ＋ 岗位类型 -->
+          <div class="frow">
+            <div class="fcell fcell-loc">
+              <span class="flabel">地区</span>
+              <div class="location-pair">
+                <select class="filter-select" v-model="provinceF" @change="onProvinceChange">
+                  <option value="">全部省份</option>
+                  <option v-for="p in Object.keys(provinces)" :key="p">{{ p }}</option>
+                </select>
+                <select class="filter-select" v-model="cityF" :disabled="!provinceF" @change="fetchJobs">
+                  <option value="">{{ provinceF ? '全部城市' : '请先选省份' }}</option>
+                  <option v-for="c in (provinces[provinceF] || [])" :key="c">{{ c }}</option>
+                </select>
               </div>
             </div>
 
-            <!-- 加载中 -->
-            <div v-if="loading" style="text-align:center;padding:2rem;color:var(--ink-3)">
-              <i class="ti ti-loader-2" style="font-size:1.5rem" /> 加载中…
-            </div>
+            <div class="fcell-div" />
 
-            <!-- 岗位列表 -->
-            <div v-else style="display:flex;flex-direction:column;gap:.4rem">
-              <RouterLink v-for="j in jobs" :key="j.id" class="job-card" :to="'/job/'+j.id">
-                <div class="job-logo">{{ j.abbr }}</div>
-                <div style="flex:1;min-width:0">
-                  <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;flex-wrap:wrap">
-                    <span style="font-size:.933rem;font-weight:600;color:var(--ink)">{{ j.title }}</span>
-                  </div>
-                  <div style="display:flex;gap:.875rem;flex-wrap:wrap">
-                    <span style="display:flex;align-items:center;gap:.25rem;font-size:.773rem;color:var(--ink-2)"><i class="ti ti-building" />{{ j.company }}</span>
-                    <span style="display:flex;align-items:center;gap:.25rem;font-size:.773rem;color:var(--ink-2)"><i class="ti ti-map-pin" />{{ j.city }}</span>
-                    <span style="display:flex;align-items:center;gap:.25rem;font-size:.773rem;color:var(--ink-2)"><i class="ti ti-users" />{{ j.target }}</span>
-                  </div>
-                </div>
-                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;flex-shrink:0">
-                  <span style="font-size:.7rem;color:var(--ink-3)">截止 {{ j.dl }}</span>
-                </div>
-              </RouterLink>
-            </div>
-
-            <!-- 分页 -->
-            <div class="pagination">
-              <button v-for="n in totalPages" :key="n" :class="['page-btn', n===page&&'active']" @click="goPage(n)">{{ n }}</button>
+            <div class="fcell fcell-grow">
+              <span class="flabel">岗位类型</span>
+              <div class="pill-group">
+                <button v-for="t in jobTypes" :key="t"
+                  :class="['pill', jobtypeF === t && 'active']"
+                  @click="toggleJobType(t)">{{ t }}</button>
+              </div>
             </div>
           </div>
+
+          <!-- 行 2：招聘类型 -->
+          <div class="frow frow-sep">
+            <div class="fcell fcell-label-inline">
+              <span class="flabel">招聘类型</span>
+            </div>
+            <div class="pill-group">
+              <button v-for="t in recruitTypes" :key="t"
+                :class="['pill', recruitF === t && 'active']"
+                @click="toggleRecruitType(t)">{{ t }}</button>
+            </div>
+          </div>
+
+          <!-- 行 3：二级（仅大实习 / 小实习） -->
+          <Transition name="l2-fade">
+            <div v-if="showL2" class="frow frow-l2">
+              <div class="l2-block">
+                <span class="flabel">时长</span>
+                <select class="filter-select" v-model="durationF" @change="fetchJobs">
+                  <option value="">不限</option>
+                  <option>1 个月以内</option>
+                  <option>1–3 个月</option>
+                  <option>3–6 个月</option>
+                  <option>6 个月以上</option>
+                </select>
+              </div>
+
+              <div class="l2-vdiv" />
+
+              <div class="l2-block">
+                <span class="flabel">每周天数</span>
+                <div class="pill-group">
+                  <button v-for="d in ['3天','4天','5天']" :key="d"
+                    :class="['pill pill-sm', daysF === d && 'active']"
+                    @click="toggleL2('daysF', d)">{{ d }}</button>
+                </div>
+              </div>
+
+              <div class="l2-vdiv" />
+
+              <div class="l2-block">
+                <span class="flabel">薪资</span>
+                <select class="filter-select" v-model="salaryF" @change="fetchJobs">
+                  <option value="">不限</option>
+                  <option>100元/天以下</option>
+                  <option>100–150元/天</option>
+                  <option>150–200元/天</option>
+                  <option>200元/天以上</option>
+                </select>
+              </div>
+
+              <div class="l2-vdiv" />
+
+              <div class="l2-block">
+                <span class="flabel">实习形式</span>
+                <div class="pill-group">
+                  <button v-for="m in ['线上线下均可','线下','线上']" :key="m"
+                    :class="['pill pill-sm', modeF === m && 'active']"
+                    @click="toggleL2('modeF', m)">{{ m }}</button>
+                </div>
+              </div>
+            </div>
+          </Transition>
+
+          <!-- 已选 chips -->
+          <div v-if="activeChips.length" class="chips-row">
+            <span v-for="chip in activeChips" :key="chip.key" class="chip">
+              {{ chip.label }}<button class="chip-x" @click="clearFilter(chip.key)">×</button>
+            </span>
+            <button v-if="activeChips.length > 1" class="chips-clear" @click="clearAll">清除全部</button>
+          </div>
+
+        </div><!-- /filter-panel -->
+
+        <!-- 数量 + 排序 -->
+        <div class="list-bar">
+          <span class="list-count">共 <strong>{{ total }}</strong> 个岗位</span>
+          <div class="sort-toggle">
+            <button :class="['sort-btn', sortBy==='newest' && 'active']" @click="setSort('newest')">
+              最新发布
+            </button>
+            <button :class="['sort-btn', sortBy==='deadline' && 'active']" @click="setSort('deadline')">
+              截止日期
+            </button>
+          </div>
+        </div>
+
+        <!-- 加载 -->
+        <div v-if="loading" style="text-align:center;padding:2rem;color:var(--ink-3)">加载中…</div>
+
+        <!-- 岗位列表 -->
+        <div v-else style="display:flex;flex-direction:column;gap:.35rem">
+          <RouterLink v-for="j in jobs" :key="j.id" class="job-card" :to="'/job/'+j.id">
+            <div class="job-logo">{{ j.abbr }}</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:.45rem;margin-bottom:.25rem;flex-wrap:wrap">
+                <span class="job-title">{{ j.title }}</span>
+                <span v-if="j.recruitBadge" :class="['badge', j.recruitBadge]">{{ j.recruit }}</span>
+              </div>
+              <div class="job-meta">
+                <span>{{ j.company }}</span>
+                <span>{{ j.city }}</span>
+                <span>{{ j.jobtype }}</span>
+              </div>
+              <div v-if="j.l2tags.length" class="job-l2tags">
+                <span v-for="tag in j.l2tags" :key="tag" class="badge badge-gray">{{ tag }}</span>
+              </div>
+            </div>
+            <span class="job-dl">截止 {{ j.dl }}</span>
+          </RouterLink>
+
+          <div v-if="!jobs.length" style="text-align:center;padding:2.5rem;color:var(--ink-3);font-size:var(--fs-md)">
+            暂无符合条件的岗位
+          </div>
+        </div>
+
+        <!-- 分页 -->
+        <div class="pagination">
+          <button v-for="n in totalPages" :key="n" :class="['page-btn', n===page&&'active']" @click="goPage(n)">{{ n }}</button>
         </div>
 
       </div>
@@ -114,114 +200,355 @@ const BASE = 'http://localhost:9100'
 const offset = ref(0)
 const CARD_W = 208
 const featured = ref([])
-
 function slide(dir) {
   const min = -(Math.max(featured.value.length - 3, 0)) * CARD_W
   offset.value = Math.max(Math.min(offset.value - dir * CARD_W, 0), min)
 }
 
-const kw = ref('')
+// ── 一级筛选 ──
+const kw        = ref('')
 const provinceF = ref('')
-const cityF = ref('')
-const targetF = ref('')
+const cityF     = ref('')
+const jobtypeF  = ref('')
+const recruitF  = ref('')
+
+// ── 二级筛选（仅大实习/小实习） ──
+const durationF = ref('')
+const daysF     = ref('')
+const salaryF   = ref('')
+const modeF     = ref('')
+
+// 仅大实习/小实习展示二级
+const showL2 = computed(() => recruitF.value === '大实习' || recruitF.value === '小实习')
+
 const provinces = {
-  '北京': ['北京'], '上海': ['上海'], '广东': ['广州','深圳','珠海','东莞','佛山'],
+  '北京': ['北京'], '上海': ['上海'],
+  '广东': ['广州','深圳','珠海','东莞','佛山'],
   '浙江': ['杭州','宁波','温州'], '江苏': ['南京','苏州','无锡','常州'],
   '四川': ['成都','绵阳'], '湖北': ['武汉','宜昌'], '陕西': ['西安','咸阳'],
   '重庆': ['重庆'], '天津': ['天津'],
+  '海外': ['香港','台北','东京','纽约','伦敦','新加坡'],
 }
-const jobs = ref([])
-const total = ref(0)
-const page = ref(1)
-const pageSize = 10
-const sortBy = ref('newest') // 'newest' | 'deadline'
-const loading = ref(false)
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+const jobTypes    = ['新闻媒体','企业公司','党政机关','学术教职','其他']
+const recruitTypes = ['大实习','小实习','日常实习','应届招聘']
 
-function setSort(s) {
-  sortBy.value = s
-  page.value = 1
+function onProvinceChange() { cityF.value = ''; fetchJobs() }
+
+function toggleJobType(v) {
+  jobtypeF.value = jobtypeF.value === v ? '' : v
+  fetchJobs()
+}
+function toggleRecruitType(v) {
+  if (recruitF.value === v) {
+    recruitF.value = ''
+  } else {
+    recruitF.value = v
+  }
+  // 切换类型时清空二级
+  if (!showL2.value) {
+    durationF.value = ''; daysF.value = ''; salaryF.value = ''; modeF.value = ''
+  }
+  fetchJobs()
+}
+function toggleL2(field, val) {
+  if (field === 'daysF') daysF.value = daysF.value === val ? '' : val
+  if (field === 'modeF') modeF.value = modeF.value === val ? '' : val
   fetchJobs()
 }
 
-function abbrOf(name) { return name ? name.charAt(0) : '职' }
-function formatDate(str) { return str ? str.slice(5, 10) : '' }
-function recruitTypeLabel(t) {
-  const map = { BIG_INTERNSHIP:'大实习', SMALL_INTERNSHIP:'小实习', DAILY_INTERNSHIP:'实习', CAMPUS_RECRUITMENT:'应届生', CAMPUS_SCREENING:'应届生', OTHER:'' }
-  return map[t] || ''
+// ── Chips ──
+const chipDefs = [
+  { key:'province', label: () => provinceF.value },
+  { key:'city',     label: () => cityF.value },
+  { key:'jobtype',  label: () => jobtypeF.value },
+  { key:'recruit',  label: () => recruitF.value },
+  { key:'duration', label: () => durationF.value ? `时长：${durationF.value}` : '' },
+  { key:'days',     label: () => daysF.value ? `${daysF.value}/周` : '' },
+  { key:'salary',   label: () => salaryF.value },
+  { key:'mode',     label: () => modeF.value },
+]
+const activeChips = computed(() =>
+  chipDefs.map(d => ({ key: d.key, label: d.label() })).filter(c => c.label)
+)
+function clearFilter(key) {
+  if (key === 'province') { provinceF.value = ''; cityF.value = '' }
+  else if (key === 'city')     cityF.value = ''
+  else if (key === 'jobtype')  jobtypeF.value = ''
+  else if (key === 'recruit') {
+    recruitF.value = ''
+    durationF.value = ''; daysF.value = ''; salaryF.value = ''; modeF.value = ''
+  }
+  else if (key === 'duration') durationF.value = ''
+  else if (key === 'days')     daysF.value = ''
+  else if (key === 'salary')   salaryF.value = ''
+  else if (key === 'mode')     modeF.value = ''
+  fetchJobs()
+}
+function clearAll() {
+  provinceF.value = ''; cityF.value = ''; jobtypeF.value = ''; recruitF.value = ''
+  durationF.value = ''; daysF.value = ''; salaryF.value = ''; modeF.value = ''
+  fetchJobs()
 }
 
-const MOCK_JOBS = [
-  { id:1,  abbr:'新', title:'新媒体编辑记者',        company:'新华社',       city:'上海', target:'应届生', dl:'06-30', rec:true,  pub:'05-20' },
-  { id:5,  abbr:'人', title:'新媒体编辑（人民网）',   company:'人民日报社',   city:'北京', target:'应届生', dl:'07-01', rec:true,  pub:'05-18' },
-  { id:7,  abbr:'央', title:'融媒体内容策划',         company:'央视新闻',     city:'北京', target:'应届生', dl:'07-15', rec:true,  pub:'05-15' },
-  { id:2,  abbr:'腾', title:'内容运营实习生',         company:'腾讯新闻',     city:'深圳', target:'实习',   dl:'07-10', rec:false, pub:'05-14' },
-  { id:3,  abbr:'字', title:'企业公关传播实习',       company:'字节跳动',     city:'上海', target:'实习',   dl:'07-15', rec:false, pub:'05-13' },
-  { id:4,  abbr:'澎', title:'数据新闻记者',           company:'澎湃新闻',     city:'上海', target:'应届生', dl:'06-20', rec:false, pub:'05-12' },
-  { id:8,  abbr:'财', title:'财经记者（校招）',       company:'财新传媒',     city:'上海', target:'应届生', dl:'08-01', rec:false, pub:'05-10' },
-  { id:9,  abbr:'南', title:'深度报道记者',           company:'南方周末',     city:'广州', target:'应届生', dl:'07-20', rec:false, pub:'05-08' },
-  { id:10, abbr:'界', title:'科技线记者实习',         company:'界面新闻',     city:'上海', target:'实习',   dl:'06-28', rec:false, pub:'05-06' },
-  { id:11, abbr:'第', title:'视频新闻编辑',           company:'第一财经',     city:'上海', target:'应届生', dl:'07-30', rec:false, pub:'05-05' },
-  { id:12, abbr:'网', title:'政务新媒体运营实习',     company:'网易新闻',     city:'杭州', target:'实习',   dl:'07-05', rec:false, pub:'05-03' },
-  { id:13, abbr:'光', title:'国际传播编辑',           company:'光明日报',     city:'北京', target:'应届生', dl:'08-10', rec:false, pub:'05-01' },
+// ── List ──
+const jobs       = ref([])
+const total      = ref(0)
+const page       = ref(1)
+const pageSize   = 10
+const sortBy     = ref('newest')
+const loading    = ref(false)
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+
+function setSort(s) { sortBy.value = s; page.value = 1; fetchJobs() }
+function goPage(n)  { page.value = n; fetchJobs() }
+function abbrOf(n)  { return n ? n.charAt(0) : '职' }
+function fmtDate(s) { return s ? s.slice(5,10) : '' }
+
+const RECRUIT_BADGE = {
+  '大实习':'badge-blue', '小实习':'badge-green',
+  '日常实习':'badge-amber', '应届招聘':'badge-red',
+}
+function recruitLabel(t) {
+  const m = { BIG_INTERNSHIP:'大实习', SMALL_INTERNSHIP:'小实习', DAILY_INTERNSHIP:'日常实习', CAMPUS_RECRUITMENT:'应届招聘', CAMPUS_SCREENING:'应届招聘', OTHER:'' }
+  return m[t] || ''
+}
+
+const MOCK = [
+  { id:1,  abbr:'新', title:'新媒体编辑记者',        company:'新华社',         city:'上海', province:'上海', jobtype:'新闻媒体', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'07-01', pub:'05-20', rec:true  },
+  { id:2,  abbr:'腾', title:'内容运营实习生',         company:'腾讯新闻',       city:'深圳', province:'广东', jobtype:'企业公司', recruit:'大实习',   duration:'3–6 个月', days:'5天', salary:'150–200元/天',  mode:'线下',       dl:'07-10', pub:'05-14', rec:false },
+  { id:3,  abbr:'字', title:'企业公关传播实习',       company:'字节跳动',       city:'上海', province:'上海', jobtype:'企业公司', recruit:'大实习',   duration:'3–6 个月', days:'5天', salary:'200元/天以上',  mode:'线下',       dl:'07-15', pub:'05-13', rec:false },
+  { id:4,  abbr:'澎', title:'数据新闻记者',           company:'澎湃新闻',       city:'上海', province:'上海', jobtype:'新闻媒体', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'06-20', pub:'05-12', rec:false },
+  { id:5,  abbr:'人', title:'新媒体编辑（人民网）',   company:'人民日报社',     city:'北京', province:'北京', jobtype:'新闻媒体', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'07-01', pub:'05-18', rec:true  },
+  { id:6,  abbr:'宣', title:'新闻宣传岗位',           company:'上海市委宣传部', city:'上海', province:'上海', jobtype:'党政机关', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'06-15', pub:'05-09', rec:false },
+  { id:7,  abbr:'央', title:'融媒体内容策划',         company:'央视新闻',       city:'北京', province:'北京', jobtype:'新闻媒体', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'07-15', pub:'05-15', rec:true  },
+  { id:8,  abbr:'财', title:'财经记者（校招）',       company:'财新传媒',       city:'上海', province:'上海', jobtype:'新闻媒体', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'08-01', pub:'05-10', rec:false },
+  { id:9,  abbr:'复', title:'新闻传播学助理研究员',   company:'复旦大学',       city:'上海', province:'上海', jobtype:'学术教职', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'07-30', pub:'05-07', rec:false },
+  { id:10, abbr:'界', title:'科技线记者实习',         company:'界面新闻',       city:'上海', province:'上海', jobtype:'新闻媒体', recruit:'日常实习', duration:'1–3 个月', days:'3天', salary:'100–150元/天',  mode:'线下',       dl:'06-28', pub:'05-06', rec:false },
+  { id:11, abbr:'彭', title:'彭博驻华实习记者',       company:'Bloomberg',      city:'北京', province:'北京', jobtype:'新闻媒体', recruit:'小实习',   duration:'3–6 个月', days:'5天', salary:'200元/天以上',  mode:'线下',       dl:'07-20', pub:'05-04', rec:false },
+  { id:12, abbr:'路', title:'路透社多媒体实习',       company:'Reuters',        city:'香港', province:'海外', jobtype:'新闻媒体', recruit:'小实习',   duration:'3–6 个月', days:'4天', salary:'200元/天以上',  mode:'线上线下均可', dl:'08-15', pub:'05-02', rec:false },
 ]
 
 async function fetchJobs() {
   loading.value = true
   try {
     const params = new URLSearchParams({ page: page.value, size: pageSize })
-    if (kw.value) params.set('keyword', kw.value)
-    if (cityF.value) params.set('workCity', cityF.value)
+    if (kw.value)        params.set('keyword',     kw.value)
+    if (cityF.value)     params.set('workCity',    cityF.value)
     else if (provinceF.value) params.set('workCity', provinceF.value)
-    const res = await fetch(`${BASE}/job/list?${params}`)
+    if (jobtypeF.value)  params.set('jobType',     jobtypeF.value)
+    if (recruitF.value)  params.set('recruitType', recruitF.value)
+    if (durationF.value) params.set('duration',    durationF.value)
+    if (daysF.value)     params.set('weekDays',    daysF.value)
+    if (salaryF.value)   params.set('salary',      salaryF.value)
+    if (modeF.value)     params.set('workMode',    modeF.value)
+    const res  = await fetch(`${BASE}/job/list?${params}`)
     const data = await res.json()
     if (data.code === 200) {
-      const records = data.data?.records || data.data?.list || []
-      total.value = data.data?.total || records.length
-      jobs.value = records.map(j => ({
+      const recs = data.data?.records || data.data?.list || []
+      total.value = data.data?.total || recs.length
+      jobs.value  = recs.map(j => ({
         id: j.id, abbr: abbrOf(j.companyName), title: j.positionName,
-        company: j.companyName, city: j.workCity || '', target: recruitTypeLabel(j.recruitType), dl: formatDate(j.workEndDate),
+        company: j.companyName, city: j.workCity || '',
+        jobtype: j.jobType || '',
+        recruit: recruitLabel(j.recruitType),
+        recruitBadge: RECRUIT_BADGE[recruitLabel(j.recruitType)] || '',
+        l2tags: [j.duration, j.weekDays, j.salary, j.workMode].filter(Boolean),
+        dl: fmtDate(j.workEndDate),
       }))
-      if (page.value === 1 && featured.value.length === 0) {
-        featured.value = jobs.value.slice(0, 6).map(j => ({ id: j.id, company: j.company, title: j.title }))
-      }
-    } else { throw new Error('empty') }
-  } catch (e) {
-    // 后端未启动时使用 mock 数据
-    let filtered = [...MOCK_JOBS]
-    if (kw.value) filtered = filtered.filter(j => j.title.includes(kw.value) || j.company.includes(kw.value))
-    if (cityF.value) filtered = filtered.filter(j => j.city === cityF.value)
-    else if (provinceF.value) {
-      const cities = provinces[provinceF.value] || []
-      filtered = filtered.filter(j => cities.includes(j.city) || j.city === provinceF.value)
-    }
-    if (targetF.value) filtered = filtered.filter(j => j.target === targetF.value)
-    // 排序
-    if (sortBy.value === 'deadline') {
-      filtered.sort((a, b) => a.dl.localeCompare(b.dl))
-    } else {
-      filtered.sort((a, b) => b.pub.localeCompare(a.pub))
-    }
-    total.value = filtered.length
-    // 前端分页切割
-    const start = (page.value - 1) * pageSize
-    jobs.value = filtered.slice(start, start + pageSize)
-    if (page.value === 1 && featured.value.length === 0) {
-      featured.value = MOCK_JOBS.filter(j => j.rec).map(j => ({ id: j.id, company: j.company, title: j.title }))
-    }
-  }
-  finally { loading.value = false }
+      if (page.value === 1 && featured.value.length === 0)
+        featured.value = jobs.value.slice(0,6).map(j => ({ id:j.id, company:j.company, title:j.title }))
+    } else throw new Error()
+  } catch {
+    let f = [...MOCK]
+    if (kw.value)          f = f.filter(j => j.title.includes(kw.value) || j.company.includes(kw.value))
+    if (cityF.value)       f = f.filter(j => j.city === cityF.value)
+    else if (provinceF.value) f = f.filter(j => j.province === provinceF.value)
+    if (jobtypeF.value)    f = f.filter(j => j.jobtype  === jobtypeF.value)
+    if (recruitF.value)    f = f.filter(j => j.recruit  === recruitF.value)
+    if (durationF.value)   f = f.filter(j => j.duration === durationF.value)
+    if (daysF.value)       f = f.filter(j => j.days     === daysF.value)
+    if (salaryF.value)     f = f.filter(j => j.salary   === salaryF.value)
+    if (modeF.value)       f = f.filter(j => j.mode     === modeF.value)
+    if (sortBy.value === 'deadline') f.sort((a,b) => a.dl.localeCompare(b.dl))
+    else                             f.sort((a,b) => b.pub.localeCompare(a.pub))
+    total.value = f.length
+    const s = (page.value-1) * pageSize
+    jobs.value = f.slice(s, s+pageSize).map(j => ({
+      ...j,
+      recruitBadge: RECRUIT_BADGE[j.recruit] || '',
+      l2tags: [j.duration, j.days, j.salary, j.mode].filter(Boolean),
+    }))
+    if (page.value === 1 && featured.value.length === 0)
+      featured.value = MOCK.filter(j => j.rec).map(j => ({ id:j.id, company:j.company, title:j.title }))
+  } finally { loading.value = false }
 }
-
-function goPage(n) { page.value = n; fetchJobs() }
 onMounted(fetchJobs)
 </script>
 
 <style scoped>
-.section-label { display:flex; align-items:center; gap:.45rem; font-size:.78rem; font-weight:600; color:var(--ink-2); letter-spacing:.02em; }
-.sort-toggle { display:flex; background:var(--bg-soft); border:1px solid var(--border); border-radius:999px; padding:2px; gap:2px; }
-.sort-btn { display:flex; align-items:center; gap:.3rem; padding:.28rem .75rem; border-radius:999px; font-size:.75rem; font-weight:500; color:var(--ink-3); background:none; border:none; cursor:pointer; transition:all var(--t); white-space:nowrap; }
+/* ── Section label ── */
+.section-label { font-size:.773rem; font-weight:600; color:var(--ink-2); letter-spacing:.02em; }
+
+/* ── Sort ── */
+.list-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:.6rem; }
+.list-count { font-size:var(--fs-sm); color:var(--ink-3); }
+.sort-toggle { display:flex; background:var(--bg-soft); border:1px solid var(--border); border-radius:var(--r-full); padding:2px; gap:2px; }
+.sort-btn { padding:.24rem .7rem; border-radius:var(--r-full); font-size:.75rem; font-weight:500; color:var(--ink-3); background:none; border:none; cursor:pointer; transition:all var(--t); white-space:nowrap; }
 .sort-btn:hover { color:var(--ink); }
 .sort-btn.active { background:var(--bg-card); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.1); font-weight:600; }
-.sort-btn i { font-size:.78rem; }
+
+/* ══ Filter Panel ══ */
+.filter-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+/* 通用行 */
+.frow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: .7rem 1.25rem;
+}
+.frow-sep {
+  border-top: 1px solid var(--border);
+}
+.frow-l2 {
+  border-top: 1px solid var(--border);
+  background: var(--bg-soft);
+  gap: 0;
+  flex-wrap: wrap;
+}
+
+/* 地区列（固定宽度） */
+.fcell-loc {
+  display: flex;
+  flex-direction: column;
+  gap: .28rem;
+  flex-shrink: 0;
+}
+/* 可伸展列 */
+.fcell-grow {
+  display: flex;
+  flex-direction: column;
+  gap: .28rem;
+  flex: 1;
+}
+/* 行内标签（招聘类型行） */
+.fcell-label-inline {
+  flex-shrink: 0;
+  margin-right: .75rem;
+}
+
+/* 竖分割线 */
+.fcell-div {
+  width: 1px; background: var(--border);
+  align-self: stretch; margin: 0 1.1rem; flex-shrink: 0;
+}
+
+/* 标签 */
+.flabel {
+  font-size: .67rem; font-weight: 700; color: var(--ink-3);
+  letter-spacing: .07em; text-transform: uppercase; white-space: nowrap;
+  line-height: 1;
+}
+
+/* Pills */
+.pill-group { display: flex; gap: .25rem; flex-wrap: wrap; align-items: center; }
+.pill {
+  padding: .25rem .75rem;
+  border-radius: var(--r-full);
+  font-size: .773rem; font-weight: 500;
+  border: 1px solid var(--border-mid);
+  background: transparent; color: var(--ink-2);
+  transition: all var(--t); white-space: nowrap; cursor: pointer;
+  line-height: 1.5;
+}
+.pill:hover { border-color: var(--red-border); background: var(--red-light); color: var(--red); }
+.pill.active { background: var(--red); color: #fff; border-color: var(--red); box-shadow: 0 1px 4px rgba(155,35,53,.25); }
+.pill-sm { padding: .2rem .65rem; font-size: .75rem; }
+
+/* Province + City */
+.location-pair { display: flex; }
+.location-pair .filter-select:first-child { border-radius: var(--r-md) 0 0 var(--r-md); border-right: none; }
+.location-pair .filter-select:last-child  { border-radius: 0 var(--r-md) var(--r-md) 0; }
+.location-pair .filter-select:last-child:disabled { opacity: .38; cursor: not-allowed; }
+
+.filter-select {
+  height: 30px; padding: 0 1.6rem 0 .65rem;
+  border: 1px solid var(--border-mid); border-radius: var(--r-md);
+  background: var(--bg-soft); color: var(--ink-2); font-size: .773rem;
+  outline: none; appearance: none; cursor: pointer; font-family: var(--font-sans);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238C8880' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right .5rem center;
+  transition: all var(--t);
+}
+.filter-select:hover { background-color: var(--bg-card); border-color: var(--border-mid); }
+.filter-select:focus { border-color: var(--red-border); color: var(--ink); outline: none; }
+
+/* ── 二级 ── */
+.l2-block {
+  display: flex; flex-direction: column; gap: .28rem;
+  padding: .65rem 1.25rem;
+}
+.l2-vdiv {
+  width: 1px; background: var(--border);
+  align-self: stretch; flex-shrink: 0;
+}
+
+/* L2 transition */
+.l2-fade-enter-active { transition: opacity .22s ease, transform .22s ease; }
+.l2-fade-leave-active { transition: opacity .15s ease; }
+.l2-fade-enter-from   { opacity: 0; transform: translateY(-6px); }
+.l2-fade-leave-to     { opacity: 0; }
+
+/* ── Chips ── */
+.chips-row {
+  display: flex; align-items: center; gap: .3rem; flex-wrap: wrap;
+  padding: .55rem 1.25rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-soft);
+}
+.chip {
+  display: inline-flex; align-items: center; gap: .15rem;
+  padding: .15rem .5rem .15rem .6rem;
+  border-radius: var(--r-full); font-size: .7rem; font-weight: 500;
+  background: var(--red-light); color: var(--red); border: 1px solid var(--red-border);
+}
+.chip-x {
+  border: none; background: none; color: var(--red); opacity: .5;
+  cursor: pointer; font-size: .9rem; padding: 0; line-height: 1;
+  transition: opacity var(--t); margin-left: 1px;
+}
+.chip-x:hover { opacity: 1; }
+.chips-clear {
+  font-size: .7rem; color: var(--ink-3); border: none; background: none;
+  cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+  transition: color var(--t); padding: 0 .2rem; margin-left: .1rem;
+}
+.chips-clear:hover { color: var(--red); }
+
+/* ── Job card ── */
+.job-card {
+  display:flex; align-items:center; gap:.875rem;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--r-lg); padding:.75rem 1rem;
+  text-decoration:none; color:inherit; transition:all var(--t);
+}
+.job-card:hover { box-shadow:var(--shadow-md); border-color:var(--border-mid); transform:translateY(-1px); }
+.job-logo {
+  width:36px; height:36px; border-radius:var(--r-md); flex-shrink:0;
+  background:var(--red-light); color:var(--red);
+  font-size:var(--fs-xl); font-weight:700; font-family:var(--font-serif);
+  display:flex; align-items:center; justify-content:center;
+}
+.job-title { font-size:.867rem; font-weight:600; color:var(--ink); }
+.job-meta { display:flex; gap:.75rem; flex-wrap:wrap; }
+.job-meta span { font-size:.75rem; color:var(--ink-2); }
+.job-l2tags { display:flex; gap:.25rem; flex-wrap:wrap; margin-top:.25rem; }
+.job-dl { font-size:.7rem; color:var(--ink-3); white-space:nowrap; flex-shrink:0; }
 </style>
