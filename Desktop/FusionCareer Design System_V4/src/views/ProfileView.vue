@@ -8,8 +8,8 @@
         <div>
           <div class="card card-p">
             <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-bottom:1.1rem;border-bottom:1px solid var(--border);margin-bottom:1.1rem">
-              <div class="nav-avatar" style="width:52px;height:52px;font-size:1.3rem;margin-bottom:.5rem">李</div>
-              <div style="font-size:.875rem;font-weight:700;color:var(--ink)">李同学</div>
+              <div class="nav-avatar" style="width:52px;height:52px;font-size:1.3rem;margin-bottom:.5rem">{{ form.realName ? form.realName.charAt(0) : '我' }}</div>
+              <div style="font-size:.875rem;font-weight:700;color:var(--ink)">{{ form.realName || '加载中…' }}</div>
             </div>
             <button v-for="item in navItems" :key="item.view"
               :class="['profile-nav-item', view===item.view && 'active']"
@@ -28,20 +28,20 @@
             <div class="card card-p">
               <div class="panel-title"><i class="ti ti-user" />基本信息</div>
               <div class="grid-2">
-                <div class="form-group"><label class="form-label">姓名</label><input class="form-control" v-model="form.name" /></div>
+                <div class="form-group"><label class="form-label">姓名</label><input class="form-control" v-model="form.realName" /></div>
                 <div class="form-group"><label class="form-label">学号</label><input class="form-control" :value="form.sid" readonly /></div>
                 <div class="form-group"><label class="form-label">届次</label><input class="form-control" v-model="form.grade" /></div>
                 <div class="form-group"><label class="form-label">学历</label>
-                  <select class="form-control" v-model="form.degree">
-                    <option>硕士研究生</option><option>本科</option><option>博士研究生</option>
+                  <select class="form-control" v-model="form.eduLevel">
+                    <option v-for="opt in EDU_LEVEL_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                   </select>
                 </div>
                 <div class="form-group"><label class="form-label">联系邮箱</label><input class="form-control" v-model="form.email" /></div>
                 <div class="form-group"><label class="form-label">手机号</label><input class="form-control" v-model="form.phone" placeholder="请填写手机号" /></div>
               </div>
               <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem">
-                <button class="btn btn-secondary">取消</button>
-                <button class="btn btn-primary" @click="toast.success('资料保存成功')"><i class="ti ti-check" />保存</button>
+                <button class="btn btn-secondary" @click="loadProfile">取消</button>
+                <button class="btn btn-primary" @click="saveProfile"><i class="ti ti-check" />保存</button>
               </div>
             </div>
           </template>
@@ -191,7 +191,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UserNavbar from '@/components/UserNavbar.vue'
 import AppToast from '@/components/AppToast.vue'
@@ -200,11 +200,27 @@ import { useToast } from '@/composables/useToast'
 const router  = useRouter()
 const route   = useRoute()
 const toast   = useToast()
+const BASE    = 'http://localhost:9100'
+const TOKEN   = () => localStorage.getItem('fusion_token') || ''
+const AUTH    = () => ({ 'Fusion-Token': TOKEN() })
+
+const EDU_LEVEL_OPTIONS = [
+  { label: '本科生',       value: 'BACHELOR' },
+  { label: '学术硕士研究生', value: 'ACADEMIC_MASTER' },
+  { label: '专业硕士研究生', value: 'PROFESSIONAL_MASTER' },
+  { label: '博士研究生',    value: 'DOCTORATE' },
+]
 
 const validViews = ['info', 'resume', 'applications']
 const view = ref(validViews.includes(route.query.tab) ? route.query.tab : 'info')
 watch(() => route.query.tab, (t) => {
   view.value = validViews.includes(t) ? t : 'info'
+})
+
+onMounted(() => {
+  loadProfile()
+  loadResumes()
+  loadApplications()
 })
 
 function switchView(nextView) {
@@ -221,29 +237,109 @@ const navItems = [
   { view:'resume',       label:'我的简历', icon:'ti-file-text' },
   { view:'applications', label:'我的投递', icon:'ti-send' },
 ]
-const form = ref({ name:'李同学', sid:'22110001', grade:'2025届', degree:'硕士研究生', email:'li2022@fudan.edu.cn', phone:'' })
+
+// ── 个人资料（对齐后端字段名）──
+const form = ref({
+  realName: '', sid: '', grade: '', eduLevel: 'ACADEMIC_MASTER',
+  email: '', phone: '',
+})
+async function loadProfile() {
+  try {
+    const res = await fetch(`${BASE}/user/profile/get`, { headers: AUTH() })
+    const data = await res.json()
+    if (data.code === 200 && data.data) {
+      const d = data.data
+      form.value = {
+        realName: d.realName  || '',
+        sid:      d.studentId || '',
+        grade:    d.grade     || '',
+        eduLevel: d.eduLevel  || 'ACADEMIC_MASTER',
+        email:    d.email     || '',
+        phone:    d.phone     || '',
+      }
+    }
+  } catch { /* 保持默认值 */ }
+}
+async function saveProfile() {
+  try {
+    const res = await fetch(`${BASE}/user/profile/save`, {
+      method: 'PUT',
+      headers: { ...AUTH(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        realName: form.value.realName,
+        grade:    form.value.grade,
+        eduLevel: form.value.eduLevel,
+        email:    form.value.email,
+        phone:    form.value.phone,
+      }),
+    })
+    const data = await res.json()
+    if (data.code === 200) toast.success('资料保存成功')
+    else throw new Error()
+  } catch { toast.error('保存失败，请重试') }
+}
 const fileInput = ref(null)
 const showDeleteModal = ref(false)
 const deleteIndex = ref(null)
 
-// 简历列表：只保留文件名、大小、图标，不显示更新时间
-const resumes = ref([
-  { name:'李同学_简历_2025.pdf',  size:'420 KB · PDF',  icon:'ti-file-type-pdf' },
-  { name:'李同学_简历_封面.jpg',  size:'186 KB · 图片', icon:'ti-photo' },
-])
+// ── 简历文件（动态加载）──
+const resumes = ref([])
+async function loadResumes() {
+  try {
+    const res = await fetch(`${BASE}/user/resume/file/list`, { headers: AUTH() })
+    const data = await res.json()
+    if (data.code === 200 && Array.isArray(data.data)) {
+      resumes.value = data.data.map(f => ({
+        id:   f.id,
+        name: f.originalName,
+        size: `${Math.round(f.fileSize / 1024)} KB · ${f.mimeType === 'application/pdf' ? 'PDF' : '图片'}`,
+        icon: f.mimeType === 'application/pdf' ? 'ti-file-type-pdf' : 'ti-photo',
+        url:  f.url,
+      }))
+    }
+  } catch { /* 保持空列表 */ }
+}
 
-const appTabs = [{ k:'all', label:'全部', n:3 }]
-const apps = [
-  { abbr:'新', title:'新媒体编辑记者（2025校招）', company:'新华社上海分社', status:'已投递', bc:'badge-green', date:'2025-05-20', k:'done',    deadline:'2026-12-31' },
-  { abbr:'澎', title:'数据新闻记者', company:'澎湃新闻', status:'审核中', bc:'badge-amber', date:'2025-05-18', k:'pending', deadline:'2025-05-15' },
-  { abbr:'腾', title:'内容运营实习生', company:'腾讯新闻', status:'草稿', bc:'badge-gray', date:'2025-05-16', k:'draft',   deadline:'2025-07-10' },
-]
+// ── 我的投递（动态加载）──
+const apps = ref([])
+const RECRUIT_BADGE = {
+  '大实习': 'badge-blue', '小实习': 'badge-green',
+  '日常实习': 'badge-amber', '应届招聘': 'badge-red', '应届生招聘': 'badge-red',
+}
+const RECRUIT_LABEL = {
+  BIG_INTERNSHIP: '大实习', SMALL_INTERNSHIP: '小实习',
+  DAILY_INTERNSHIP: '日常实习', CAMPUS_RECRUITMENT: '应届生招聘',
+  CAMPUS_SCREENING: '应届生摸排', OTHER: '',
+}
+async function loadApplications() {
+  try {
+    const res = await fetch(`${BASE}/questionnaire/my/list`, { headers: AUTH() })
+    const data = await res.json()
+    if (data.code === 200 && Array.isArray(data.data)) {
+      apps.value = data.data.map(a => ({
+        jobPostId: a.jobPostId,
+        abbr:      a.companyName ? a.companyName.charAt(0) : '职',
+        title:     a.positionName,
+        company:   a.companyName,
+        deadline:  a.questionnaireDeadline || '',
+        date:      a.createdAt   ? a.createdAt.slice(0, 10) : '',
+        recruit:   RECRUIT_LABEL[a.recruitType] || '',
+        bc:        RECRUIT_BADGE[RECRUIT_LABEL[a.recruitType]] || 'badge-gray',
+        k:         'done',
+      }))
+    }
+  } catch {
+    // 接口未上线时保留空列表，不用 mock 数据
+  }
+}
+
+const appTabs = computed(() => [{ k: 'all', label: '全部', n: apps.value.length }])
 
 function isExpired(deadline) {
   if (!deadline) return false
   return new Date(deadline) < new Date(new Date().toDateString())
 }
-const filteredApps = computed(() => activeTab.value==='all' ? apps : apps.filter(a=>a.k===activeTab.value))
+const filteredApps = computed(() => activeTab.value === 'all' ? apps.value : apps.value.filter(a => a.k === activeTab.value))
 
 // ── 修改投递 ──
 const showEditApply = ref(false)
@@ -313,7 +409,7 @@ function submitEditApply() {
   toast.success('投递信息已更新')
 }
 
-function handleUpload(e) {
+async function handleUpload(e) {
   const file = e.target.files?.[0]
   if (!file) return
   const ext = file.name.split('.').pop().toLowerCase()
@@ -323,43 +419,62 @@ function handleUpload(e) {
     e.target.value = ''
     return
   }
-  if (file.size > 5 * 1024 * 1024) {
-    toast.error('文件不能超过 5 MB')
+  if (file.size > 20 * 1024 * 1024) {
+    toast.error('文件不能超过 20 MB')
     e.target.value = ''
     return
   }
-  const isImg = imgExts.includes(ext)
-  resumes.value.unshift({
-    name: file.name,
-    size: `${(file.size / 1024).toFixed(0)} KB · ${isImg ? '图片' : 'PDF'}`,
-    icon: isImg ? 'ti-photo' : 'ti-file-type-pdf',
-    file,
-  })
-  toast.success('简历上传成功')
+  try {
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await fetch(`${BASE}/user/resume/file/upload`, {
+      method: 'POST',
+      headers: AUTH(),
+      body: fd,
+    })
+    const data = await res.json()
+    if (data.code === 200) {
+      toast.success('简历上传成功')
+      loadResumes()
+    } else {
+      toast.error(data.message || '上传失败')
+    }
+  } catch {
+    toast.error('上传失败，请检查网络')
+  }
   e.target.value = ''
 }
 
-function downloadResume(r) {
-  if (!r.file) {
-    toast.success('示例简历暂无可下载文件')
-    return
-  }
-  const url = URL.createObjectURL(r.file)
+async function downloadResume(r) {
+  if (!r.url) { toast.error('文件地址不可用'); return }
   const a = document.createElement('a')
-  a.href = url
+  a.href = `${BASE}/user/resume/file/${r.id}/download`
   a.download = r.name
   a.click()
-  URL.revokeObjectURL(url)
 }
 
 function deleteResume(index) {
   deleteIndex.value = index
   showDeleteModal.value = true
 }
-function confirmDeleteResume() {
+async function confirmDeleteResume() {
   if (deleteIndex.value === null) return
-  resumes.value.splice(deleteIndex.value, 1)
-  toast.success('简历已删除')
+  const r = resumes.value[deleteIndex.value]
+  try {
+    const res = await fetch(`${BASE}/user/resume/file/${r.id}`, {
+      method: 'DELETE',
+      headers: AUTH(),
+    })
+    const data = await res.json()
+    if (data.code === 200) {
+      resumes.value.splice(deleteIndex.value, 1)
+      toast.success('简历已删除')
+    } else {
+      toast.error(data.message || '删除失败')
+    }
+  } catch {
+    toast.error('删除失败，请检查网络')
+  }
   cancelDeleteResume()
 }
 function cancelDeleteResume() {

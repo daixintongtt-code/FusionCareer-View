@@ -43,7 +43,7 @@
               <div class="location-pair">
                 <!-- 自定义省份下拉（Teleport 到 body，解决父容器 overflow 裁剪） -->
                 <div class="cselect-wrap" :class="{ open: provinceOpen }" @click.stop>
-                  <button ref="provBtnRef" class="cselect-trigger filter-select" type="button" @click="toggleProvince" style="min-width:90px">
+                  <button ref="provBtnRef" class="cselect-trigger filter-select" type="button" @click="toggleProvince" style="width:96px">
                     <span>{{ provinceF || '全部省份' }}</span>
                     <i class="ti ti-chevron-down cselect-arrow" />
                   </button>
@@ -58,10 +58,24 @@
                     </div>
                   </Teleport>
                 </div>
-                <select class="filter-select" v-model="cityF" :disabled="!provinceF" @change="fetchJobs">
-                  <option value="">{{ provinceF ? '全部城市' : '请先选省份' }}</option>
-                  <option v-for="c in (provinces[provinceF] || [])" :key="c">{{ c }}</option>
-                </select>
+                <div class="cselect-wrap" :class="{ open: cityOpen, disabled: !provinceF }" @click.stop>
+                  <button ref="cityBtnRef" class="cselect-trigger filter-select" type="button"
+                    :disabled="!provinceF" @click="toggleCity"
+                    style="width:88px">
+                    <span>{{ cityF || (provinceF ? '全部城市' : '请先选省份') }}</span>
+                    <i class="ti ti-chevron-down cselect-arrow" />
+                  </button>
+                  <Teleport to="body">
+                    <div v-if="cityOpen" class="cselect-dropdown-teleport" :style="cityDropStyle" @click.stop>
+                      <div class="cselect-list">
+                        <div class="cselect-item" :class="{ active: cityF === '' }" @click="selectCity('')">全部城市</div>
+                        <div v-for="c in (provinces[provinceF] || [])" :key="c"
+                          class="cselect-item" :class="{ active: cityF === c }"
+                          @click="selectCity(c)">{{ c }}</div>
+                      </div>
+                    </div>
+                  </Teleport>
+                </div>
               </div>
             </div>
 
@@ -255,7 +269,40 @@ function selectProvince(p) {
 
 // 点击外部关闭省份下拉
 if (typeof window !== 'undefined') {
-  document.addEventListener('click', () => { provinceOpen.value = false })
+  document.addEventListener('click', () => {
+    provinceOpen.value = false
+    cityOpen.value = false
+  })
+}
+
+// ── 城市自定义下拉 ──
+const cityOpen     = ref(false)
+const cityBtnRef   = ref(null)
+const cityDropStyle = ref({})
+
+function toggleCity() {
+  if (!provinceF.value) return
+  cityOpen.value = !cityOpen.value
+  if (cityOpen.value) {
+    nextTick(() => {
+      const r = cityBtnRef.value?.getBoundingClientRect()
+      if (r) {
+        cityDropStyle.value = {
+          position: 'fixed',
+          top:      r.bottom + 4 + 'px',
+          left:     r.left   + 'px',
+          minWidth: '140px',
+          zIndex:   9999,
+        }
+      }
+    })
+  }
+}
+
+function selectCity(c) {
+  cityF.value = c
+  cityOpen.value = false
+  fetchJobs()
 }
 
 // ── 二级筛选（仅大实习/小实习） ──
@@ -344,8 +391,8 @@ const activeChips = computed(() =>
   chipDefs.map(d => ({ key: d.key, label: d.label() })).filter(c => c.label)
 )
 function clearFilter(key) {
-  if (key === 'province') { provinceF.value = ''; cityF.value = ''; provinceOpen.value = false }
-  else if (key === 'city')     cityF.value = ''
+  if (key === 'province') { provinceF.value = ''; cityF.value = ''; provinceOpen.value = false; cityOpen.value = false }
+  else if (key === 'city')     { cityF.value = ''; cityOpen.value = false }
   else if (key === 'jobtype')  jobtypeF.value = ''
   else if (key === 'recruit') {
     recruitF.value = ''
@@ -382,8 +429,17 @@ const RECRUIT_BADGE = {
   '日常实习':'badge-amber', '应届招聘':'badge-red',
 }
 function recruitLabel(t) {
-  const m = { BIG_INTERNSHIP:'大实习', SMALL_INTERNSHIP:'小实习', DAILY_INTERNSHIP:'日常实习', CAMPUS_RECRUITMENT:'应届招聘', CAMPUS_SCREENING:'应届招聘', OTHER:'' }
+  const m = {
+    BIG_INTERNSHIP:'大实习', SMALL_INTERNSHIP:'小实习',
+    DAILY_INTERNSHIP:'日常实习', CAMPUS_RECRUITMENT:'应届招聘',
+    CAMPUS_SCREENING:'应届招聘', OTHER:'',
+  }
   return m[t] || ''
+}
+// 后端 WorkMode 枚举：HYBRID = 线上线下均可
+function workModeLabel(t) {
+  const m = { ONLINE:'线上', OFFLINE:'线下', BOTH:'线上线下均可', HYBRID:'线上线下均可' }
+  return m[t] || t || ''
 }
 
 const MOCK = [
@@ -401,6 +457,47 @@ const MOCK = [
   { id:12, abbr:'路', title:'路透社多媒体实习',       company:'Reuters',        city:'香港', province:'海外', jobtype:'新闻媒体', recruit:'小实习',   duration:'3–6 个月', days:'4天', salary:'200元/天以上',  mode:'线上线下均可', dl:'08-15', pub:'05-02', rec:false },
 ]
 
+const DURATION_DISPLAY = {
+  LESS_THAN_THREE_MONTHS: '3个月以内',
+  THREE_TO_SIX_MONTHS:    '3–6个月',
+  MORE_THAN_SIX_MONTHS:   '6个月以上',
+}
+const DAYS_DISPLAY = {
+  ONE_TO_TWO_DAYS:    '1-2天/周',
+  THREE_TO_FOUR_DAYS: '3-4天/周',
+  FIVE_DAYS:          '5天/周',
+}
+
+// ── 枚举映射（模块级常量）──
+const JOBTYPE_ENUM = {
+  '新闻媒体': 'MEDIA', '企业公司': 'ENTERPRISE',
+  '党政机关': 'GOVERNMENT', '学术教职': 'ACADEMIC', '其他': 'OTHER',
+}
+const RECRUIT_ENUM = {
+  '大实习': 'BIG_INTERNSHIP', '小实习': 'SMALL_INTERNSHIP',
+  '日常实习': 'DAILY_INTERNSHIP', '应届招聘': 'CAMPUS_RECRUITMENT',
+}
+const DURATION_ENUM = {
+  '1 个月以内': 'LESS_THAN_THREE_MONTHS',
+  '1–3 个月':   'LESS_THAN_THREE_MONTHS',
+  '3–6 个月':   'THREE_TO_SIX_MONTHS',
+  '6 个月以上':  'MORE_THAN_SIX_MONTHS',
+}
+const DAYS_ENUM = {
+  '3天': 'ONE_TO_TWO_DAYS',
+  '4天': 'THREE_TO_FOUR_DAYS',
+  '5天': 'FIVE_DAYS',
+}
+const MODE_ENUM = {
+  '线上': 'ONLINE', '线下': 'OFFLINE', '线上线下均可': 'HYBRID',
+}
+const SALARY_RANGE = {
+  '100元/天以下':  { salaryMax: 99 },
+  '100–150元/天': { salaryMin: 100, salaryMax: 150 },
+  '150–200元/天': { salaryMin: 151, salaryMax: 200 },
+  '200元/天以上':  { salaryMin: 201 },
+}
+
 async function fetchJobs() {
   loading.value = true
   try {
@@ -408,12 +505,23 @@ async function fetchJobs() {
     if (kw.value)        params.set('keyword',     kw.value)
     if (cityF.value)     params.set('workCity',    cityF.value)
     else if (provinceF.value) params.set('workCity', provinceF.value)
-    if (jobtypeF.value)  params.set('jobType',     jobtypeF.value)
-    if (recruitF.value)  params.set('recruitType', recruitF.value)
-    if (durationF.value) params.set('duration',    durationF.value)
-    if (daysF.value)     params.set('weekDays',    daysF.value)
-    if (salaryF.value)   params.set('salary',      salaryF.value)
-    if (modeF.value)     params.set('workMode',    modeF.value)
+    if (jobtypeF.value)  params.set('jobCategory', JOBTYPE_ENUM[jobtypeF.value] || jobtypeF.value)
+    if (recruitF.value)  params.set('recruitType', RECRUIT_ENUM[recruitF.value] || recruitF.value)
+    if (durationF.value) {
+      const e = DURATION_ENUM[durationF.value]
+      if (e) params.set('workPeriodType', e)
+    }
+    if (daysF.value) {
+      const e = DAYS_ENUM[daysF.value]
+      if (e) params.set('workDurationType', e)
+    }
+    if (salaryF.value) {
+      const r = SALARY_RANGE[salaryF.value]
+      if (r?.salaryMin != null) params.set('salaryMin', r.salaryMin)
+      if (r?.salaryMax != null) params.set('salaryMax', r.salaryMax)
+    }
+    if (modeF.value) params.set('workMode', MODE_ENUM[modeF.value] || modeF.value)
+    params.set('sortBy', sortBy.value === 'deadline' ? 'DEADLINE' : 'NEWEST')
     const res  = await fetch(`${BASE}/job/list?${params}`)
     const data = await res.json()
     if (data.code === 200) {
@@ -422,14 +530,19 @@ async function fetchJobs() {
       jobs.value  = recs.map(j => ({
         id: j.id, abbr: abbrOf(j.companyName), title: j.positionName,
         company: j.companyName, city: j.workCity || '',
-        jobtype: j.jobType || '',
+        jobtype: j.jobCategory || '',
         recruit: recruitLabel(j.recruitType),
         recruitBadge: RECRUIT_BADGE[recruitLabel(j.recruitType)] || '',
-        l2tags: [j.duration, j.weekDays, j.salary, j.workMode].filter(Boolean),
+        l2tags: [j.workPeriodType ? DURATION_DISPLAY[j.workPeriodType] : null,
+                 j.workDurationType ? DAYS_DISPLAY[j.workDurationType] : null,
+                 j.salaryDisplay, workModeLabel(j.workMode)].filter(Boolean),
         dl: fmtDate(j.workEndDate),
+        rec: !!j.recommended,
       }))
       if (page.value === 1 && featured.value.length === 0)
-        featured.value = jobs.value.slice(0,6).map(j => ({ id:j.id, company:j.company, title:j.title }))
+        featured.value = recs.filter(j => j.recommended).slice(0, 6).map(j => ({ id: j.id, company: j.companyName, title: j.positionName }))
+      if (page.value === 1 && featured.value.length === 0)
+        featured.value = jobs.value.slice(0, 6).map(j => ({ id: j.id, company: j.company, title: j.title }))
     } else throw new Error()
   } catch {
     let f = [...MOCK]
@@ -550,17 +663,20 @@ onMounted(fetchJobs)
 .location-pair .filter-select:first-child { border-radius: var(--r-md) 0 0 var(--r-md); border-right: none; }
 .location-pair .filter-select:last-child  { border-radius: 0 var(--r-md) var(--r-md) 0; }
 .location-pair .filter-select:last-child:disabled { opacity: .38; cursor: not-allowed; }
+.cselect-wrap.disabled .cselect-trigger { opacity: .38; cursor: not-allowed; }
 
 /* 自定义省份下拉 */
-.cselect-wrap { position: relative; }
+.cselect-wrap { position: relative; display: inline-flex; }
 .cselect-trigger {
   display: flex; align-items: center; justify-content: space-between; gap: .35rem;
   width: 100%; text-align: left; cursor: pointer;
-  border-radius: var(--r-md) 0 0 var(--r-md) !important;
-  border-right: none !important;
-  padding-right: .65rem !important;
+  padding-right: .65rem;
   background-image: none !important;
 }
+/* 省份（左侧）：左圆角，右侧直角，去掉右边框 */
+
+/* 城市（右侧）：右圆角，左侧直角，去掉左边框 */
+
 .cselect-trigger span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cselect-arrow {
   font-size: .7rem; color: var(--ink-3); flex-shrink: 0;
@@ -604,6 +720,16 @@ onMounted(fetchJobs)
 }
 .filter-select:hover { background-color: var(--bg-card); border-color: var(--border-mid); }
 .filter-select:focus { border-color: var(--red-border); color: var(--ink); outline: none; }
+
+/* 省份（左侧）/ 城市（右侧）接缝圆角 — 必须在 .filter-select 之后声明才能覆盖 */
+.location-pair .cselect-wrap:first-child .cselect-trigger {
+  border-radius: var(--r-md) 0 0 var(--r-md);
+  border-right: none;
+}
+.location-pair .cselect-wrap:last-child .cselect-trigger {
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  border-left: none;
+}
 
 /* ── 二级 ── */
 .l2-block {

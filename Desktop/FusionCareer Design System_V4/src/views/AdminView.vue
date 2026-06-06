@@ -82,7 +82,7 @@
                     <span v-if="j.sourceUrl" class="badge badge-gray" style="font-size:.72rem;gap:3px"><i class="ti ti-external-link" style="font-size:9px" />外部投递</span>
                     <span v-else>{{ j.apps ?? 0 }}</span>
                   </td>
-                  <td><span v-if="j.status==='PUBLISHED'" :class="['rec-toggle', j.rec&&'on']" @click="toggleRec(j)"><i :class="['ti', j.rec?'ti-star-filled':'ti-star']" />{{ j.rec?'推荐中':'设为推荐' }}</span><span v-else style="color:var(--ink-4);font-size:.78rem">—</span></td>
+                  <td><span v-if="j.status==='PUBLISHED'" :class="['rec-toggle', j.recommended&&'on']" @click="toggleRec(j)"><i :class="['ti', j.recommended?'ti-star-filled':'ti-star']" />{{ j.recommended?'推荐中':'设为推荐' }}</span><span v-else style="color:var(--ink-4);font-size:.78rem">—</span></td>
                   <td>
                     <div class="tbl-acts">
                       <div class="tbl-btn" @click="openEdit(j)"><span class="tbl-tip">编辑</span><i class="ti ti-edit" /></div>
@@ -179,10 +179,10 @@
               <div class="form-group"><label class="form-label">学历要求</label>
                 <select class="form-control" v-model="nj.reqEduLevel">
                   <option value="">不限</option>
-                  <option value="UNDERGRADUATE">本科生</option>
+                  <option value="BACHELOR">本科生</option>
                   <option value="ACADEMIC_MASTER">学术硕士研究生</option>
                   <option value="PROFESSIONAL_MASTER">专业硕士研究生</option>
-                  <option value="DOCTORAL">博士研究生</option>
+                  <option value="DOCTORATE">博士研究生</option>
                 </select>
               </div>
             </div>
@@ -659,12 +659,12 @@ function cancelConfirm() { show_confirm.value = false }
 
 
 const jobs = ref([
-  { id:1, positionName:'新媒体编辑记者', companyName:'新华社', workCity:'上海', workEndDate:'2025-06-30', status:'PUBLISHED', apps:23, rec:true,  sourceUrl:'', sourceType:'PLATFORM', publishedAt:'2025-05-20' },
-  { id:2, positionName:'内容运营实习生', companyName:'腾讯新闻', workCity:'深圳', workEndDate:'2025-07-10', status:'OFFLINE',  apps:null, rec:false, sourceUrl:'', sourceType:'PLATFORM', publishedAt:'2025-05-18' },
-  { id:3, positionName:'企业公关传播实习', companyName:'字节跳动', workCity:'上海', workEndDate:'2025-07-15', status:'OFFLINE',  apps:null, rec:false, sourceUrl:'https://job.bytedance.com/1', sourceType:'CRAWL', publishedAt:'2025-05-17' },
-  { id:4, positionName:'数据新闻记者', companyName:'澎湃新闻', workCity:'上海', workEndDate:'2025-06-20', status:'OFFLINE',  apps:null, rec:false, sourceUrl:'https://job.thepaper.cn/2', sourceType:'CRAWL', publishedAt:'2025-05-16' },
-  { id:5, positionName:'新媒体编辑（人民网）', companyName:'人民日报社', workCity:'北京', workEndDate:'2025-07-01', status:'PUBLISHED', apps:11, rec:true,  sourceUrl:'', sourceType:'PLATFORM', publishedAt:'2025-05-12' },
-  { id:6, positionName:'财经记者', companyName:'财新传媒', workCity:'上海', workEndDate:'2025-05-01', status:'EXPIRED',  apps:8,  rec:false, sourceUrl:'', sourceType:'PLATFORM', publishedAt:'2025-04-10' },
+  { id:1, positionName:'新媒体编辑记者', companyName:'新华社', workCity:'上海', workEndDate:'2025-06-30', status:'PUBLISHED', apps:23, recommended:true,  sourceUrl:'', sourceType:'PLATFORM', publishedAt:'2025-05-20' },
+  { id:2, positionName:'内容运营实习生', companyName:'腾讯新闻', workCity:'深圳', workEndDate:'2025-07-10', status:'OFFLINE',  apps:null, recommended:false, sourceUrl:'', sourceType:'PLATFORM', publishedAt:'2025-05-18' },
+  { id:3, positionName:'企业公关传播实习', companyName:'字节跳动', workCity:'上海', workEndDate:'2025-07-15', status:'OFFLINE',  apps:null, recommended:false, sourceUrl:'https://job.bytedance.com/1', sourceType:'CRAWL', publishedAt:'2025-05-17' },
+  { id:4, positionName:'数据新闻记者', companyName:'澎湃新闻', workCity:'上海', workEndDate:'2025-06-20', status:'OFFLINE',  apps:null, recommended:false, sourceUrl:'https://job.thepaper.cn/2', sourceType:'CRAWL', publishedAt:'2025-05-16' },
+  { id:5, positionName:'新媒体编辑（人民网）', companyName:'人民日报社', workCity:'北京', workEndDate:'2025-07-01', status:'PUBLISHED', apps:11, recommended:true,  sourceUrl:'', sourceType:'PLATFORM', publishedAt:'2025-05-12' },
+  { id:6, positionName:'财经记者', companyName:'财新传媒', workCity:'上海', workEndDate:'2025-05-01', status:'EXPIRED',  apps:8,  recommended:false, sourceUrl:'', sourceType:'PLATFORM', publishedAt:'2025-04-10' },
 ])
 const STATUS_LABEL = { PUBLISHED:'发布中', OFFLINE:'未发布', EXPIRED:'已截止' }
 const STATUS_CLASS = { PUBLISHED:'badge-green', OFFLINE:'badge-gray', EXPIRED:'badge-amber' }
@@ -688,7 +688,7 @@ const draftCount  = computed(() => draftJobs.value.length)
 
 function toggleAll(c) { selected.value = c ? filteredJobs.value.map(j=>j.id) : [] }
 function toggleSel(id) { selected.value.includes(id) ? selected.value = selected.value.filter(i=>i!==id) : selected.value.push(id) }
-function toggleRec(j) { j.rec=!j.rec; toast.success(j.rec?'已设为推荐':'已取消推荐') }
+function toggleRec(j) { j.recommended=!j.recommended; toast.success(j.recommended?'已设为推荐':'已取消推荐') }
 function publish(j) { j.status='PUBLISHED'; toast.success('已发布上线') }
 
 // 批量操作
@@ -706,7 +706,7 @@ function bulkPublish() {
 }
 function bulkRec(on) {
   const n = selected.value.length
-  jobs.value.forEach(j => { if (selected.value.includes(j.id)) j.rec = on })
+  jobs.value.forEach(j => { if (selected.value.includes(j.id)) j.recommended = on })
   toast.success(on ? `已将 ${n} 条设为推荐` : `已取消 ${n} 条推荐`)
   selected.value = []
 }
@@ -753,7 +753,7 @@ const NJ_INIT = () => ({
   workMode: '', workDurationType: '', workDaysPerWeek: null, workPeriodType: '',
   salaryMin: null, salaryMax: null, salaryDisplay: '',
   jobDesc: '', reqMajor: '', reqGradYear: '', reqSkills: '', reqOther: '',
-  // 问卷题目（平台内投递时使用）对应 JobPostQuestionRequest[]
+  recommended: false,
   questions: [],
 })
 const isExternal = ref(false)  // 兼容旧引用，不再使用
@@ -800,7 +800,7 @@ function saveDraft() {
     if (j) Object.assign(j, { ...nj.value })
     toast.success('已保存修改')
   } else {
-    jobs.value.unshift({ id:Date.now(), ...nj.value, status:'OFFLINE', apps:null, rec:false, publishedAt:now })
+    jobs.value.unshift({ id:Date.now(), ...nj.value, status:'OFFLINE', apps:null, recommended:false, publishedAt:now })
     toast.success('已保存为草稿')
   }
   v.value = 'list'; _resetForm()
@@ -825,7 +825,7 @@ function publishJob() {
       } else { doSave() }
     }
   } else {
-    jobs.value.unshift({ id:Date.now(), ...nj.value, status:'PUBLISHED', apps:0, rec:false, publishedAt:now })
+    jobs.value.unshift({ id:Date.now(), ...nj.value, status:'PUBLISHED', apps:0, recommended:false, publishedAt:now })
     toast.success('已发布，学生可见')
     v.value = 'list'; _resetForm()
   }

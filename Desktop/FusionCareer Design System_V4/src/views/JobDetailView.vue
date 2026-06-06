@@ -102,7 +102,7 @@
           <button class="icon-btn" @click="showApply=false"><i class="ti ti-x"></i></button>
         </div>
         <div class="apply-modal-body">
-          <div v-for="(q, qi) in mockQuestions" :key="q.id" class="aq-item">
+          <div v-for="(q, qi) in questions" :key="q.id" class="aq-item">
             <div class="aq-label">{{ qi+1 }}. {{ q.title }}<span v-if="q.required" style="color:var(--red)"> *</span></div>
             <input v-if="q.type==='TEXT'" class="form-control" v-model="answers[q.id]" :placeholder="q.placeholder || '请填写'" />
             <textarea v-else-if="q.type==='TEXTAREA'" class="form-control" style="min-height:80px" v-model="answers[q.id]" :placeholder="q.placeholder || '请填写'"></textarea>
@@ -117,10 +117,10 @@
               </label>
             </div>
             <div v-else-if="q.type==='FILE_UPLOAD'" class="resume-picker">
-              <!-- 当前已选 -->
+              <!-- 当前已选：answers[q.id] 是 { name, file, fileId, url } 对象 -->
               <div v-if="answers[q.id]" class="resume-picker-current">
                 <i class="ti ti-file-check" style="color:#1e6636"></i>
-                <span>{{ answers[q.id] }}</span>
+                <span>{{ answers[q.id].name }}</span>
                 <button class="resume-picker-clear" @click="answers[q.id]=null" title="取消选择"><i class="ti ti-x" /></button>
               </div>
               <!-- 选项区 -->
@@ -128,12 +128,12 @@
                 <div class="resume-picker-section-label">从我的简历选择</div>
                 <div v-for="r in myResumes" :key="r.name"
                   class="resume-picker-item"
-                  :class="{ selected: answers[q.id]===r.name }"
-                  @click="answers[q.id]=r.name"
+                  :class="{ selected: answers[q.id] && answers[q.id].fileId===r.id }"
+                  @click="answers[q.id]={ name: r.name, file: null, fileId: r.id, url: r.url }"
                 >
                   <i :class="['ti', r.icon]" />
                   <span>{{ r.name }}</span>
-                  <i v-if="answers[q.id]===r.name" class="ti ti-circle-check-filled" style="color:var(--red);margin-left:auto" />
+                  <i v-if="answers[q.id] && answers[q.id].fileId===r.id" class="ti ti-circle-check-filled" style="color:var(--red);margin-left:auto" />
                 </div>
                 <div class="resume-picker-section-label" style="margin-top:.6rem">或上传本地文件</div>
                 <div class="resume-picker-item resume-picker-upload" @click="triggerFile(q.id)">
@@ -171,19 +171,61 @@ const submitted = ref(false)
 const answers = ref({})
 const fileRefs = {}
 
-// 平台已上传的简历（与 ProfileView 保持同步，实际应从接口获取）
-const myResumes = [
-  { name: '李同学_简历_2025.pdf',  icon: 'ti-file-type-pdf' },
-  { name: '李同学_简历_备份.docx', icon: 'ti-file-type-doc' },
-]
+// 从接口加载当前用户的简历文件列表
+const myResumes = ref([])
+async function loadMyResumes() {
+  try {
+    const res = await fetch(`${BASE}/user/resume/file/list`, {
+      headers: { 'Fusion-Token': localStorage.getItem('fusion_token') || '' }
+    })
+    const data = await res.json()
+    if (data.code === 200 && Array.isArray(data.data)) {
+      myResumes.value = data.data.map(f => ({
+        id: f.id,
+        name: f.originalName,
+        url:  f.url,
+        icon: f.mimeType === 'application/pdf' ? 'ti-file-type-pdf' : 'ti-photo',
+      }))
+    }
+  } catch {
+    // 接口不通时保持空列表，用户可直接上传
+  }
+}
+
+// 从接口加载该岗位的问卷题目
+const questions = ref([])
+async function loadQuestions(jobPostId) {
+  try {
+    const res = await fetch(`${BASE}/questionnaire/questions/${jobPostId}`, {
+      headers: { 'Fusion-Token': localStorage.getItem('fusion_token') || '' }
+    })
+    const data = await res.json()
+    if (data.code === 200 && Array.isArray(data.data)) {
+      questions.value = data.data
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map(q => ({
+          id:          q.id,
+          title:       q.title,
+          type:        q.questionType,
+          required:    q.required,
+          placeholder: q.placeholder || '',
+          options:     q.options || [],
+        }))
+    }
+  } catch {
+    questions.value = mockQuestions
+  }
+}
+
+// fallback 静态题目（接口不通时使用）
 
 const abbr = computed(function() {
   if (job.value && job.value.companyName) return job.value.companyName.charAt(0)
   return '职'
 })
 
-const WORK_MODE_MAP = { ONLINE: '线上', OFFLINE: '线下', HYBRID: '线上线下均可' }
-const EDU_MAP = { UNDERGRADUATE: '本科生', ACADEMIC_MASTER: '学术硕士研究生', PROFESSIONAL_MASTER: '专业硕士研究生', DOCTORAL: '博士研究生' }
+const WORK_MODE_MAP = { ONLINE: '线上', OFFLINE: '线下', BOTH: '线上线下均可', HYBRID: '线上线下均可' }
+const EDU_MAP = { BACHELOR: '本科生', ACADEMIC_MASTER: '学术硕士研究生', PROFESSIONAL_MASTER: '专业硕士研究生', DOCTORATE: '博士研究生' }
 const RECRUIT_MAP = { BIG_INTERNSHIP: '大实习', SMALL_INTERNSHIP: '小实习', DAILY_INTERNSHIP: '日常实习', CAMPUS_RECRUITMENT: '应届生招聘', CAMPUS_SCREENING: '应届生摸排', OTHER: '其他' }
 
 const workModeLabel = computed(function() { return job.value ? (WORK_MODE_MAP[job.value.workMode] || '') : '' })
@@ -192,16 +234,16 @@ const recruitLabel = computed(function() { return job.value ? (RECRUIT_MAP[job.v
 
 var MOCK = [
   { id: 1,  positionName: '新媒体编辑记者',      companyName: '新华社',     workCity: '上海', workEndDate: '2025-06-30', salaryDisplay: '面议',       workMode: 'OFFLINE', recruitType: 'CAMPUS_RECRUITMENT', sourceUrl: '',                           jobDesc: '负责新媒体平台日常内容编辑与发布，参与重大新闻报道策划，独立完成文字、图片、短视频等多形态内容生产。要求文字功底扎实，对新闻有热情，能适应快节奏工作环境。', reqEduLevel: 'ACADEMIC_MASTER',    reqMajor: '新闻传播学、中文',     reqSkills: '熟练使用各类新媒体工具，有校媒经历优先',       reqOther: '实习期不少于3个月，每周5天' },
-  { id: 2,  positionName: '内容运营实习生',       companyName: '腾讯新闻',   workCity: '深圳', workEndDate: '2025-07-10', salaryDisplay: '200元/天',   workMode: 'OFFLINE', recruitType: 'BIG_INTERNSHIP',       sourceUrl: '',                           jobDesc: '协助内容团队进行选题策划、内容分发与用户运营，参与数据分析和竞品研究，支持日常运营工作。',                                                               reqEduLevel: 'UNDERGRADUATE',       reqMajor: '新闻、传播、中文、市场营销', reqSkills: '有一定数据分析能力，熟悉微信、微博等平台运营规则' },
-  { id: 3,  positionName: '企业公关传播实习',     companyName: '字节跳动',   workCity: '上海', workEndDate: '2025-07-15', salaryDisplay: '250元/天',   workMode: 'HYBRID',  recruitType: 'DAILY_INTERNSHIP',     sourceUrl: 'https://job.bytedance.com/1', jobDesc: '协助企业公关团队处理媒体关系，参与品牌传播活动策划，撰写新闻稿和品牌故事，维护媒体资源库。',                                                               reqEduLevel: 'UNDERGRADUATE',       reqMajor: '新闻传播、公共关系、中文', reqSkills: '有媒体实习经历或校媒经验优先，英文读写能力良好' },
+  { id: 2,  positionName: '内容运营实习生',       companyName: '腾讯新闻',   workCity: '深圳', workEndDate: '2025-07-10', salaryDisplay: '200元/天',   workMode: 'OFFLINE', recruitType: 'BIG_INTERNSHIP',       sourceUrl: '',                           jobDesc: '协助内容团队进行选题策划、内容分发与用户运营，参与数据分析和竞品研究，支持日常运营工作。',                                                               reqEduLevel: 'BACHELOR',       reqMajor: '新闻、传播、中文、市场营销', reqSkills: '有一定数据分析能力，熟悉微信、微博等平台运营规则' },
+  { id: 3,  positionName: '企业公关传播实习',     companyName: '字节跳动',   workCity: '上海', workEndDate: '2025-07-15', salaryDisplay: '250元/天',   workMode: 'BOTH',  recruitType: 'DAILY_INTERNSHIP',     sourceUrl: 'https://job.bytedance.com/1', jobDesc: '协助企业公关团队处理媒体关系，参与品牌传播活动策划，撰写新闻稿和品牌故事，维护媒体资源库。',                                                               reqEduLevel: 'BACHELOR',       reqMajor: '新闻传播、公共关系、中文', reqSkills: '有媒体实习经历或校媒经验优先，英文读写能力良好' },
   { id: 4,  positionName: '数据新闻记者',         companyName: '澎湃新闻',   workCity: '上海', workEndDate: '2025-06-20', salaryDisplay: '面议',       workMode: 'OFFLINE', recruitType: 'CAMPUS_RECRUITMENT', sourceUrl: 'https://job.thepaper.cn/2',   jobDesc: '独立负责数据新闻选题挖掘与报道，熟练使用数据可视化工具，能将复杂数据转化为易读的新闻故事。',                                                               reqEduLevel: 'ACADEMIC_MASTER',    reqMajor: '新闻传播、统计学、计算机相关', reqSkills: 'Python/R数据分析，D3.js或Tableau等可视化工具' },
   { id: 5,  positionName: '新媒体编辑（人民网）', companyName: '人民日报社', workCity: '北京', workEndDate: '2025-07-01', salaryDisplay: '面议',       workMode: 'OFFLINE', recruitType: 'CAMPUS_RECRUITMENT', sourceUrl: '',                           jobDesc: '负责人民网新媒体平台内容编辑、策划与推送，参与重要议题报道，承担一定的采访任务。',                                                                         reqEduLevel: 'ACADEMIC_MASTER',    reqMajor: '新闻传播学',           reqSkills: '文字表达能力突出，政治敏锐度强',               reqOther: '党员优先' },
   { id: 7,  positionName: '融媒体内容策划',       companyName: '央视新闻',   workCity: '北京', workEndDate: '2025-07-15', salaryDisplay: '面议',       workMode: 'OFFLINE', recruitType: 'CAMPUS_RECRUITMENT', sourceUrl: '',                           jobDesc: '参与融媒体内容策划与制作，结合电视、网络、社交媒体等多平台特点，创作符合年轻受众口味的新闻产品。',                                                           reqEduLevel: 'ACADEMIC_MASTER',    reqMajor: '新闻传播、广播电视',   reqSkills: '有短视频制作或直播经验者优先' },
   { id: 8,  positionName: '财经记者（校招）',     companyName: '财新传媒',   workCity: '上海', workEndDate: '2025-08-01', salaryDisplay: '面议',       workMode: 'OFFLINE', recruitType: 'CAMPUS_RECRUITMENT', sourceUrl: '',                           jobDesc: '负责财经领域深度报道，包括宏观经济、资本市场、产业链等方向，具备较强的独立调查和分析能力。',                                                               reqEduLevel: 'ACADEMIC_MASTER',    reqMajor: '新闻传播、经济学、金融学', reqSkills: '英文能力强，有财经类实习经历优先' },
   { id: 9,  positionName: '深度报道记者',         companyName: '南方周末',   workCity: '广州', workEndDate: '2025-07-20', salaryDisplay: '面议',       workMode: 'OFFLINE', recruitType: 'CAMPUS_RECRUITMENT', sourceUrl: '',                           jobDesc: '聚焦社会议题的深度调查报道，具备强烈的新闻责任感和独立思考能力。',                                                                                         reqEduLevel: 'ACADEMIC_MASTER',    reqMajor: '新闻传播学、社会学',   reqSkills: '有调查报道经历者优先' },
-  { id: 10, positionName: '科技线记者实习',       companyName: '界面新闻',   workCity: '上海', workEndDate: '2025-06-28', salaryDisplay: '180元/天',   workMode: 'HYBRID',  recruitType: 'DAILY_INTERNSHIP',     sourceUrl: '',                           jobDesc: '跟进科技行业动态，撰写科技公司报道和产品评测，维护科技领域信息源。',                                                                                       reqEduLevel: 'UNDERGRADUATE',       reqMajor: '新闻传播、计算机、理工科相关', reqSkills: '对科技行业有浓厚兴趣' },
-  { id: 11, positionName: '视频新闻编辑',         companyName: '第一财经',   workCity: '上海', workEndDate: '2025-07-30', salaryDisplay: '面议',       workMode: 'OFFLINE', recruitType: 'CAMPUS_RECRUITMENT', sourceUrl: '',                           jobDesc: '负责财经视频内容的策划与制作，包括短视频脚本撰写、拍摄协调和后期剪辑。',                                                                                   reqEduLevel: 'UNDERGRADUATE',       reqMajor: '新闻传播、广播电视、数字媒体', reqSkills: 'Premiere/Final Cut等剪辑软件' },
-  { id: 12, positionName: '政务新媒体运营实习',   companyName: '网易新闻',   workCity: '杭州', workEndDate: '2025-07-05', salaryDisplay: '200元/天',   workMode: 'OFFLINE', recruitType: 'SMALL_INTERNSHIP',     sourceUrl: '',                           jobDesc: '协助政务新媒体账号内容运营，包括选题策划、文案撰写和数据复盘。',                                                                                           reqEduLevel: 'UNDERGRADUATE',       reqMajor: '新闻传播、公共管理、中文', reqSkills: '文案能力强' },
+  { id: 10, positionName: '科技线记者实习',       companyName: '界面新闻',   workCity: '上海', workEndDate: '2025-06-28', salaryDisplay: '180元/天',   workMode: 'BOTH',  recruitType: 'DAILY_INTERNSHIP',     sourceUrl: '',                           jobDesc: '跟进科技行业动态，撰写科技公司报道和产品评测，维护科技领域信息源。',                                                                                       reqEduLevel: 'BACHELOR',       reqMajor: '新闻传播、计算机、理工科相关', reqSkills: '对科技行业有浓厚兴趣' },
+  { id: 11, positionName: '视频新闻编辑',         companyName: '第一财经',   workCity: '上海', workEndDate: '2025-07-30', salaryDisplay: '面议',       workMode: 'OFFLINE', recruitType: 'CAMPUS_RECRUITMENT', sourceUrl: '',                           jobDesc: '负责财经视频内容的策划与制作，包括短视频脚本撰写、拍摄协调和后期剪辑。',                                                                                   reqEduLevel: 'BACHELOR',       reqMajor: '新闻传播、广播电视、数字媒体', reqSkills: 'Premiere/Final Cut等剪辑软件' },
+  { id: 12, positionName: '政务新媒体运营实习',   companyName: '网易新闻',   workCity: '杭州', workEndDate: '2025-07-05', salaryDisplay: '200元/天',   workMode: 'OFFLINE', recruitType: 'SMALL_INTERNSHIP',     sourceUrl: '',                           jobDesc: '协助政务新媒体账号内容运营，包括选题策划、文案撰写和数据复盘。',                                                                                           reqEduLevel: 'BACHELOR',       reqMajor: '新闻传播、公共管理、中文', reqSkills: '文案能力强' },
   { id: 13, positionName: '国际传播编辑',         companyName: '光明日报',   workCity: '北京', workEndDate: '2025-08-10', salaryDisplay: '面议',       workMode: 'OFFLINE', recruitType: 'CAMPUS_RECRUITMENT', sourceUrl: '',                           jobDesc: '负责光明日报国际版及海外平台内容编辑，参与中国故事的对外传播。',                                                                                             reqEduLevel: 'ACADEMIC_MASTER',    reqMajor: '新闻传播、外语类',     reqSkills: '英文写作能力强，有海外学习/生活经历优先' },
 ]
 
@@ -225,14 +267,18 @@ function triggerFile(qid) {
   if (fileRefs[qid]) fileRefs[qid].click()
 }
 
+// FILE_UPLOAD 题：answers 里存 { name, file, fileId, url } 对象
+// 选已有简历时：{ name, file: null, fileId: <id> }
+// 本地上传后：  { name, file: <File>, fileId: null, url: '' }
 function handleFile(qid, e) {
   var f = e.target.files[0]
-  if (f) answers.value[qid] = f.name
+  if (f) answers.value[qid] = { name: f.name, file: f, fileId: null, url: '' }
 }
 
-function submitApply() {
-  for (var i = 0; i < mockQuestions.length; i++) {
-    var q = mockQuestions[i]
+async function submitApply() {
+  // 1. 校验必填
+  for (var i = 0; i < questions.value.length; i++) {
+    var q = questions.value[i]
     if (!q.required) continue
     var v = answers.value[q.id]
     if (!v || (Array.isArray(v) && v.length === 0)) {
@@ -240,15 +286,97 @@ function submitApply() {
       return
     }
   }
-  showApply.value = false
-  submitted.value = true
-  toast.success('投递成功！')
+
+  const token = localStorage.getItem('fusion_token') || ''
+  const jobPostId = route.params.id
+
+  // 2. 上传本地文件（FILE_UPLOAD 题且用户选了本地 File 对象）
+  for (var j = 0; j < questions.value.length; j++) {
+    var qq = questions.value[j]
+    if (qq.type !== 'FILE_UPLOAD') continue
+    var ans = answers.value[qq.id]
+    if (!ans || !ans.file) continue  // 选的是已有简历，fileId 已存在，跳过上传
+    try {
+      var fd = new FormData()
+      fd.append('file', ans.file)
+      var upRes = await fetch(BASE + '/questionnaire/upload', {
+        method: 'POST',
+        headers: { 'Fusion-Token': token },
+        body: fd,
+      })
+      var upData = await upRes.json()
+      if (upData.code === 200) {
+        answers.value[qq.id] = {
+          name: ans.name,
+          file: null,
+          fileId: upData.data?.id || null,
+          url: upData.data?.url || upData.data || '',
+        }
+      } else {
+        toast.error('简历上传失败：' + (upData.message || '请重试'))
+        return
+      }
+    } catch {
+      toast.error('简历上传失败，请检查网络')
+      return
+    }
+  }
+
+  // 3. 组装 answers JSON 数组（格式：[{ questionId, value }]）
+  var answerList = []
+  for (var k = 0; k < questions.value.length; k++) {
+    var qqq = questions.value[k]
+    var val = answers.value[qqq.id]
+    if (val === undefined || val === null || val === '') continue
+    var serialized
+    if (qqq.type === 'CHECKBOX') {
+      serialized = Array.isArray(val) ? val.join(',') : String(val)
+    } else if (qqq.type === 'FILE_UPLOAD') {
+      // 优先用上传后的 url；已有简历用 fileId（转字符串）
+      serialized = (val.url) ? val.url
+                 : (val.fileId != null) ? String(val.fileId)
+                 : val.name || ''
+    } else {
+      serialized = String(val)
+    }
+    answerList.push({ questionId: qqq.id, value: serialized })
+  }
+
+  // 4. 调提交接口
+  try {
+    var submitRes = await fetch(BASE + '/questionnaire/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Fusion-Token': token },
+      body: JSON.stringify({
+        jobPostId: jobPostId,
+        answers: JSON.stringify(answerList),
+      }),
+    })
+    var submitData = await submitRes.json()
+    if (submitData.code === 200) {
+      showApply.value = false
+      submitted.value = true
+      toast.success('投递成功！')
+    } else {
+      toast.error(submitData.message || '提交失败，请重试')
+    }
+  } catch {
+    toast.error('提交失败，请检查网络')
+  }
 }
 
+onMounted(() => {
+  fetchJob()
+  loadMyResumes()
+})
+
+// fetchJob 内部加载完岗位后再加载题目
 async function fetchJob() {
   loading.value = true
   try {
-    var res = await fetch(BASE + '/job/' + route.params.id)
+    var res = await fetch(BASE + '/job/' + route.params.id, {
+      headers: { 'Fusion-Token': localStorage.getItem('fusion_token') || '' }
+    })
     var data = await res.json()
     if (data.code === 200 && data.data) {
       job.value = data.data
@@ -263,11 +391,10 @@ async function fetchJob() {
     }
   } finally {
     loading.value = false
+    // 加载完岗位后再拉问卷题目
+    if (job.value) loadQuestions(route.params.id)
   }
-}
-
-onMounted(fetchJob)
-</script>
+}</script>
 
 <style scoped>
 .detail-layout { display:grid; grid-template-columns:1fr 295px; gap:1.5rem; align-items:start; }
