@@ -1,24 +1,5 @@
-# OS / editor cruft
-.DS_Store
-Thumbs.db
-*.swp
-*.swo
-.idea/
-.vscode/
-
-# Dependencies (Vue UI kit lives in ui_kits/student)
 node_modules/
 dist/
-build/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# Local uploads / scratch
-uploads/
-.cache/
-
-# Deploy secrets
-.env.frontend
+.DS_Store
+*.local
+.env
