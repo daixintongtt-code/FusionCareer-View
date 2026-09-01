@@ -70,10 +70,26 @@
                 style="display:none"
                 @change="handleUpload"
               />
-              <div class="upload-zone" style="margin-top:1rem" @click="fileInput?.click()">
-                <i class="ti ti-cloud-upload" />
-                <div class="uz-title">上传新简历</div>
-                <div class="uz-hint">支持 PDF、图片格式，单文件不超过 5 MB</div>
+              <div
+                class="upload-zone"
+                :class="{ uploading }"
+                style="margin-top:1rem"
+                @click="!uploading && fileInput?.click()"
+              >
+                <i :class="['ti', uploading ? 'ti-loader-2 upload-spinner' : 'ti-cloud-upload']" />
+                <div class="uz-title">{{ uploading ? '正在上传并处理简历…' : '上传新简历' }}</div>
+                <div class="uz-hint">支持 PDF、图片格式，单文件不超过 20 MB</div>
+              </div>
+              <label class="profile-sync-option" :class="{ disabled: uploading }">
+                <input type="checkbox" v-model="updateProfileOnUpload" :disabled="uploading" />
+                <span class="profile-sync-check"><i class="ti ti-check" /></span>
+                <span class="profile-sync-copy">
+                  <strong>同时更新「我的资料」</strong>
+                  <small>勾选后，系统将识别简历中的姓名、届次、学历及联系方式，并同步更新对应资料。</small>
+                </span>
+              </label>
+              <div class="profile-sync-tip">
+                <i class="ti ti-shield-check" />仅在本次上传中生效，未识别出的资料不会被清空
               </div>
             </div>
           </template>
@@ -279,6 +295,8 @@ async function saveProfile() {
   } catch { toast.error('保存失败，请重试') }
 }
 const fileInput = ref(null)
+const uploading = ref(false)
+const updateProfileOnUpload = ref(false)
 const showDeleteModal = ref(false)
 const deleteIndex = ref(null)
 
@@ -424,9 +442,11 @@ async function handleUpload(e) {
     e.target.value = ''
     return
   }
+  uploading.value = true
   try {
     const fd = new FormData()
     fd.append('file', file)
+    fd.append('updateProfile', String(updateProfileOnUpload.value))
     const res = await fetch(`${BASE}/user/resume/file/upload`, {
       method: 'POST',
       headers: AUTH(),
@@ -434,15 +454,22 @@ async function handleUpload(e) {
     })
     const data = await res.json()
     if (data.code === 200) {
-      toast.success('简历上传成功')
-      loadResumes()
+      await loadResumes()
+      if (updateProfileOnUpload.value) {
+        await loadProfile()
+        toast.success('简历上传成功，「我的资料」已同步更新')
+      } else {
+        toast.success('简历上传成功')
+      }
     } else {
       toast.error(data.message || '上传失败')
     }
   } catch {
     toast.error('上传失败，请检查网络')
+  } finally {
+    uploading.value = false
+    e.target.value = ''
   }
-  e.target.value = ''
 }
 
 async function downloadResume(r) {
@@ -515,9 +542,35 @@ function cancelDeleteResume() {
 .resume-row { display: flex; align-items: center; gap: 1.25rem; padding: 1.25rem 1.35rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: 20px; margin-bottom: .95rem; }
 .upload-zone { min-height: 165px; border-radius: 24px; cursor: pointer; transition: all .2s ease; }
 .upload-zone:hover { background: #fff6f7; border-color: var(--red); transform: translateY(-1px); }
+.upload-zone.uploading { cursor: wait; opacity: .72; pointer-events: none; }
 .upload-zone i { font-size: 2.15rem; margin-bottom: .72rem; }
+.upload-spinner { animation: uploadSpin .8s linear infinite; }
+@keyframes uploadSpin { to { transform: rotate(360deg); } }
 .uz-title { font-size: 1.12rem; font-weight: 800; }
 .uz-hint { font-size: .96rem; }
+.profile-sync-option {
+  display: flex; align-items: flex-start; gap: .8rem;
+  margin-top: 1rem; padding: 1rem 1.1rem;
+  border: 1px solid var(--border); border-radius: 18px;
+  background: var(--bg-soft); cursor: pointer; transition: all .2s ease;
+}
+.profile-sync-option:hover { border-color: var(--red-border); background: var(--red-light); }
+.profile-sync-option:has(input:checked) { border-color: var(--red); background: var(--red-light); }
+.profile-sync-option.disabled { cursor: wait; opacity: .65; }
+.profile-sync-option input { position: absolute; opacity: 0; pointer-events: none; }
+.profile-sync-check {
+  width: 24px; height: 24px; border: 1.5px solid var(--border-mid); border-radius: 7px;
+  background: #fff; color: transparent; display: inline-flex; align-items: center;
+  justify-content: center; flex-shrink: 0; transition: all .2s ease;
+}
+.profile-sync-option input:focus-visible + .profile-sync-check { outline: 3px solid rgba(164, 31, 51, .18); outline-offset: 2px; }
+.profile-sync-option input:checked + .profile-sync-check { background: var(--red); border-color: var(--red); color: #fff; }
+.profile-sync-check i { font-size: 15px; }
+.profile-sync-copy { display: flex; flex-direction: column; gap: .25rem; min-width: 0; }
+.profile-sync-copy strong { color: var(--ink); font-size: .98rem; line-height: 1.35; }
+.profile-sync-copy small { color: var(--ink-2); font-size: .83rem; line-height: 1.55; }
+.profile-sync-tip { display: flex; align-items: center; gap: .4rem; margin: .55rem .2rem 0; color: var(--ink-3); font-size: .76rem; }
+.profile-sync-tip i { color: #2f7d4a; font-size: .9rem; }
 .btn-icon { width: 44px; height: 44px; border-radius: 15px; display: inline-flex; align-items: center; justify-content: center; }
 .btn-icon i { font-size: 1.12rem; }
 

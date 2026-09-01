@@ -30,7 +30,7 @@
       <aside class="sidebar">
         <div class="sidebar-label">岗位管理</div>
         <button :class="['sidebar-link', v==='list'&&'active']" @click="v='list'"><i class="ti ti-list" />岗位列表</button>
-        <button :class="['sidebar-link', v==='create'&&'active']" @click="v='create'"><i class="ti ti-plus" />新建岗位</button>
+        <button :class="['sidebar-link', v==='create'&&'active']" @click="openCreate"><i class="ti ti-plus" />新建岗位</button>
         <button :class="['sidebar-link', v==='drafts'&&'active']" @click="v='drafts'"><i class="ti ti-inbox" />草稿箱<span v-if="draftCount>0" class="sidebar-badge">{{ draftCount }}</span></button>
         <button :class="['sidebar-link', v==='resumes'&&'active']" @click="v='resumes'"><i class="ti ti-file-text" />简历管理</button>
       </aside>
@@ -106,11 +106,45 @@
           <div class="page-hd">
             <div>
               <h1><i :class="editingId?'ti ti-edit':'ti ti-plus'" />{{ editingId ? '编辑岗位' : '新建岗位' }}</h1>
-              
+              <p>{{ editingId ? '修改岗位信息，确认后保存发布' : '粘贴原始岗位描述，智能识别后校对发布' }}</p>
             </div>
           </div>
 
-          <div class="card card-p" style="margin-bottom:1rem">
+          <div v-if="!editingId" class="card card-p smart-entry-card" style="margin-bottom:1rem">
+            <div class="smart-entry-head">
+              <div class="smart-entry-icon"><i class="ti ti-sparkles" /></div>
+              <div>
+                <div class="smart-entry-title">智能生成标准岗位信息 <span>推荐</span></div>
+                <div class="smart-entry-desc">粘贴招聘公告、邮件或网页中的完整岗位描述，系统将识别并填入下方标准字段。</div>
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:1rem">
+              <label class="form-label" for="raw-job-description">原始岗位描述</label>
+              <textarea
+                id="raw-job-description"
+                class="form-control smart-source-input"
+                v-model="rawJobDescription"
+                maxlength="10000"
+                placeholder="请粘贴完整岗位描述，例如：&#10;岗位名称：新媒体运营实习生&#10;公司：复新传媒&#10;工作地点：上海&#10;岗位职责：……&#10;任职要求：……"
+              />
+            </div>
+            <div class="smart-entry-actions">
+              <span>{{ rawJobDescription.length.toLocaleString() }} / 10,000 字</span>
+              <button class="btn btn-primary btn-sm smart-parse-btn" :disabled="isParsingJob" @click="processJobDescription">
+                <i :class="['ti', isParsingJob ? 'ti-loader-2 smart-spinner' : 'ti-wand']" />
+                {{ isParsingJob ? '正在识别…' : '智能识别并填充' }}
+              </button>
+            </div>
+            <div v-if="parsedFieldLabels.length" class="smart-result">
+              <i class="ti ti-circle-check-filled" />
+              <div>
+                <strong>已生成标准岗位信息，请在发布前核对</strong>
+                <p>本次识别并填充 {{ parsedFieldLabels.length }} 项：{{ parsedFieldLabels.join('、') }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div ref="basicInfoCard" class="card card-p basic-info-card" style="margin-bottom:1rem">
             <div class="form-section-title">基本信息</div>
             <div class="grid-2">
               <div class="form-group"><label class="form-label">岗位名称 <span class="req">*</span></label>
@@ -637,11 +671,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
+const BASE  = 'http://localhost:9100'
 const v     = ref('list')
 const sk    = ref('')
 const sf    = ref('')
@@ -778,10 +813,193 @@ function moveQ(idx, dir) {
 }
 const nj = ref(NJ_INIT())
 const editingId = ref(null)
+const rawJobDescription = ref('')
+const isParsingJob = ref(false)
+const parsedFieldLabels = ref([])
+const basicInfoCard = ref(null)
+
+const NORMALIZED_FIELDS = [
+  { key: 'positionName', label: '岗位名称', aliases: ['positionName', 'position_name', 'jobTitle', 'job_title'] },
+  { key: 'companyName', label: '所属公司', aliases: ['companyName', 'company_name', 'company'] },
+  { key: 'department', label: '所属部门', aliases: ['department', 'departmentName', 'department_name'] },
+  { key: 'headcount', label: '招聘人数', aliases: ['headcount', 'recruitCount', 'recruit_count'] },
+  { key: 'jobCategory', label: '岗位大类', aliases: ['jobCategory', 'job_category'] },
+  { key: 'jobSubCategory', label: '岗位小类', aliases: ['jobSubCategory', 'job_sub_category'] },
+  { key: 'recruitType', label: '招聘类型', aliases: ['recruitType', 'recruit_type'] },
+  { key: 'reqEduLevel', label: '学历要求', aliases: ['reqEduLevel', 'req_edu_level', 'educationLevel', 'education_level'] },
+  { key: 'workStartDate', label: '开始日期', aliases: ['workStartDate', 'work_start_date', 'startDate', 'start_date'] },
+  { key: 'workEndDate', label: '截止日期', aliases: ['workEndDate', 'work_end_date', 'deadline'] },
+  { key: 'workProvince', label: '工作省份', aliases: ['workProvince', 'work_province', 'province'] },
+  { key: 'workCity', label: '工作城市', aliases: ['workCity', 'work_city', 'city'] },
+  { key: 'workLocation', label: '详细地点', aliases: ['workLocation', 'work_location', 'address'] },
+  { key: 'workMode', label: '工作形式', aliases: ['workMode', 'work_mode'] },
+  { key: 'workDurationType', label: '每周天数', aliases: ['workDurationType', 'work_duration_type'] },
+  { key: 'workDaysPerWeek', label: '每周具体天数', aliases: ['workDaysPerWeek', 'work_days_per_week'] },
+  { key: 'workPeriodType', label: '实习时长', aliases: ['workPeriodType', 'work_period_type'] },
+  { key: 'salaryMin', label: '薪资下限', aliases: ['salaryMin', 'salary_min'] },
+  { key: 'salaryMax', label: '薪资上限', aliases: ['salaryMax', 'salary_max'] },
+  { key: 'salaryDisplay', label: '薪资说明', aliases: ['salaryDisplay', 'salary_display', 'salary'] },
+  { key: 'jobDesc', label: '岗位描述', aliases: ['jobDesc', 'job_desc', 'responsibilities'] },
+  { key: 'reqMajor', label: '专业要求', aliases: ['reqMajor', 'req_major', 'majorRequirement', 'major_requirement'] },
+  { key: 'reqGradYear', label: '毕业年份', aliases: ['reqGradYear', 'req_grad_year', 'graduationYear', 'graduation_year'] },
+  { key: 'reqSkills', label: '技能要求', aliases: ['reqSkills', 'req_skills', 'skills'] },
+  { key: 'reqOther', label: '其他要求', aliases: ['reqOther', 'req_other', 'otherRequirements', 'other_requirements'] },
+  { key: 'sourceUrl', label: '投递链接', aliases: ['sourceUrl', 'source_url', 'applyUrl', 'apply_url'] },
+]
+
+const ENUM_LABELS = {
+  jobCategory: {
+    学术教职: 'ACADEMIC', 党政机关: 'GOVERNMENT', 新闻媒体: 'MEDIA', 企业公司: 'ENTERPRISE', 其他: 'OTHER',
+  },
+  recruitType: {
+    大实习: 'BIG_INTERNSHIP', 小实习: 'SMALL_INTERNSHIP', 日常实习: 'DAILY_INTERNSHIP',
+    应届招聘: 'CAMPUS_RECRUITMENT', 应届生招聘: 'CAMPUS_RECRUITMENT', 应届生摸排: 'CAMPUS_SCREENING', 其他: 'OTHER',
+  },
+  reqEduLevel: {
+    本科生: 'BACHELOR', 本科: 'BACHELOR', 学术硕士研究生: 'ACADEMIC_MASTER', 学术硕士: 'ACADEMIC_MASTER',
+    专业硕士研究生: 'PROFESSIONAL_MASTER', 专业硕士: 'PROFESSIONAL_MASTER', 博士研究生: 'DOCTORATE', 博士: 'DOCTORATE',
+  },
+  workMode: { 线上: 'ONLINE', 线下: 'OFFLINE', 线上线下均可: 'HYBRID', 混合: 'HYBRID' },
+  workDurationType: {
+    '一周1-2天': 'ONE_TO_TWO_DAYS', '1-2天': 'ONE_TO_TWO_DAYS',
+    '一周3-4天': 'THREE_TO_FOUR_DAYS', '3-4天': 'THREE_TO_FOUR_DAYS',
+    '一周5天': 'FIVE_DAYS', '5天': 'FIVE_DAYS',
+  },
+  workPeriodType: {
+    '3个月以内': 'LESS_THAN_THREE_MONTHS', '3-6个月': 'THREE_TO_SIX_MONTHS', '6个月以上': 'MORE_THAN_SIX_MONTHS',
+  },
+}
+
+function normalizeEnum(key, value) {
+  if (typeof value !== 'string') return value
+  return ENUM_LABELS[key]?.[value.trim()] || value
+}
+
+function applyNormalizedJob(payload) {
+  const source = payload?.jobInfo || payload?.normalizedJob || payload?.normalized_job || payload || {}
+  const applied = []
+  NORMALIZED_FIELDS.forEach(({ key, label, aliases }) => {
+    const alias = aliases.find(name => source[name] !== undefined && source[name] !== null && source[name] !== '')
+    if (!alias) return
+    let value = normalizeEnum(key, source[alias])
+    if (['headcount', 'workDaysPerWeek', 'salaryMin', 'salaryMax'].includes(key)) {
+      const numberValue = Number(value)
+      if (!Number.isNaN(numberValue)) value = numberValue
+    }
+    nj.value[key] = value
+    applied.push(label)
+  })
+  deliveryMode.value = nj.value.sourceUrl ? 'external' : 'internal'
+  parsedFieldLabels.value = applied
+  return applied
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function findLine(text, labels) {
+  const pattern = labels.map(escapeRegExp).join('|')
+  const match = text.match(new RegExp(`(?:^|\\n)\\s*(?:${pattern})\\s*[：:]\\s*([^\\n]+)`, 'i'))
+  return match?.[1]?.trim() || ''
+}
+
+function findSection(text, starts, ends) {
+  const startPattern = starts.map(escapeRegExp).join('|')
+  const endPattern = ends.map(escapeRegExp).join('|')
+  const match = text.match(new RegExp(`(?:${startPattern})\\s*[：:]?\\s*([\\s\\S]*?)(?=\\n\\s*(?:${endPattern})\\s*[：:]?|$)`, 'i'))
+  return match?.[1]?.trim() || ''
+}
+
+function localNormalizeJob(text) {
+  const firstLine = text.split('\n').map(line => line.trim()).find(Boolean) || ''
+  const result = {
+    positionName: findLine(text, ['岗位名称', '职位名称', '招聘岗位', '招聘职位']) || firstLine.replace(/^(招聘|诚聘)[：:]?/, '').slice(0, 80),
+    companyName: findLine(text, ['公司名称', '公司', '单位名称', '招聘单位']),
+    department: findLine(text, ['所属部门', '部门']),
+    workLocation: findLine(text, ['工作地点', '办公地点', '详细地点']),
+    reqMajor: findLine(text, ['专业要求', '专业']),
+    reqGradYear: findLine(text, ['毕业年份要求', '毕业年份', '毕业时间']),
+    reqSkills: findLine(text, ['技能要求', '技能']),
+    sourceUrl: text.match(/https?:\/\/[^\s，。；]+/i)?.[0] || '',
+  }
+  const duty = findSection(text, ['岗位职责', '工作职责', '职位描述', '工作内容'], ['任职要求', '职位要求', '岗位要求', '申请方式', '投递方式', '联系方式'])
+  const requirement = findSection(text, ['任职要求', '职位要求', '岗位要求'], ['申请方式', '投递方式', '联系方式', '截止日期'])
+  result.jobDesc = duty || text
+  result.reqOther = requirement
+
+  const headcount = text.match(/(?:招聘人数|人数)\s*[：:]?\s*(\d+)/)
+  if (headcount) result.headcount = Number(headcount[1])
+
+  const city = findLine(text, ['工作城市', '城市']) || ['北京', '上海', '广州', '深圳', '杭州', '南京', '成都', '武汉', '重庆', '苏州'].find(name => result.workLocation.includes(name)) || ''
+  result.workCity = city
+  if (city) result.workProvince = ['北京', '上海', '重庆'].includes(city) ? `${city}市` : ''
+
+  const dates = [...text.matchAll(/(20\d{2})[年\/.\-](\d{1,2})[月\/.\-](\d{1,2})日?/g)].map(match => `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`)
+  if (dates.length > 1) result.workStartDate = dates[0]
+  if (dates.length) result.workEndDate = dates[dates.length - 1]
+
+  const salary = text.match(/(\d{2,5})\s*[-~—至]\s*(\d{2,5})\s*元?\s*[\/／]?(?:天|日)/)
+  if (salary) {
+    result.salaryMin = Number(salary[1])
+    result.salaryMax = Number(salary[2])
+    result.salaryDisplay = `${salary[1]}-${salary[2]}元/天`
+  } else if (/薪资面议|待遇面议|面议/.test(text)) result.salaryDisplay = '面议'
+
+  const days = text.match(/(?:每周|一周)\s*(\d)\s*(?:天|个工作日)/)
+  if (days) {
+    result.workDaysPerWeek = Number(days[1])
+    result.workDurationType = Number(days[1]) <= 2 ? 'ONE_TO_TWO_DAYS' : Number(days[1]) <= 4 ? 'THREE_TO_FOUR_DAYS' : 'FIVE_DAYS'
+  }
+  const months = text.match(/(?:至少|实习期?限?|持续)\s*(\d+)\s*个?月/)
+  if (months) result.workPeriodType = Number(months[1]) < 3 ? 'LESS_THAN_THREE_MONTHS' : Number(months[1]) <= 6 ? 'THREE_TO_SIX_MONTHS' : 'MORE_THAN_SIX_MONTHS'
+
+  result.workMode = /线上线下|混合办公|hybrid/i.test(text) ? 'HYBRID' : /远程|线上办公/.test(text) ? 'ONLINE' : result.workLocation ? 'OFFLINE' : ''
+  result.recruitType = /校招|应届/.test(text) ? 'CAMPUS_RECRUITMENT' : /实习/.test(text) ? 'DAILY_INTERNSHIP' : 'OTHER'
+  result.jobCategory = /记者|编辑|新闻|媒体|内容运营|编导/.test(text) ? 'MEDIA' : /政府|机关|公务员|选调/.test(text) ? 'GOVERNMENT' : /教师|教职|博士后/.test(text) ? 'ACADEMIC' : /公司|企业|集团|科技/.test(text) ? 'ENTERPRISE' : 'OTHER'
+  result.reqEduLevel = /博士/.test(requirement) ? 'DOCTORATE' : /硕士/.test(requirement) ? 'ACADEMIC_MASTER' : /本科/.test(requirement) ? 'BACHELOR' : ''
+  return result
+}
+
+async function processJobDescription() {
+  const rawDescription = rawJobDescription.value.trim()
+  if (rawDescription.length < 20) {
+    toast.error('请粘贴较完整的岗位描述后再识别')
+    return
+  }
+  isParsingJob.value = true
+  parsedFieldLabels.value = []
+  try {
+    const res = await fetch(`${BASE}/internal/job-post/normalize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rawDescription }),
+    })
+    if (!res.ok) throw new Error('normalize request failed')
+    const data = await res.json()
+    if (data.code !== undefined && data.code !== 200) throw new Error(data.message || 'normalize failed')
+    const applied = applyNormalizedJob(data.data ?? data)
+    if (!applied.length) throw new Error('empty normalize result')
+  } catch {
+    applyNormalizedJob(localNormalizeJob(rawDescription))
+  } finally {
+    isParsingJob.value = false
+  }
+  toast.success(`已识别并填充 ${parsedFieldLabels.value.length} 项岗位信息`)
+  await nextTick()
+  basicInfoCard.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function openCreate() {
+  _resetForm()
+  v.value = 'create'
+}
 
 function openEdit(j) {
   editingId.value = j.id
   nj.value = { ...NJ_INIT(), ...j, questions: j.questions ? [...j.questions] : [] }
+  rawJobDescription.value = ''
+  parsedFieldLabels.value = []
   deliveryMode.value = j.sourceUrl ? 'external' : 'internal'
   v.value = 'create'
 }
@@ -790,7 +1008,14 @@ function _validate() {
   if (!nj.value.jobCategory) { toast.error('请选择岗位大类'); return false }
   return true
 }
-function _resetForm() { nj.value = NJ_INIT(); editingId.value = null; isExternal.value = false; deliveryMode.value = 'internal' }
+function _resetForm() {
+  nj.value = NJ_INIT()
+  editingId.value = null
+  isExternal.value = false
+  deliveryMode.value = 'internal'
+  rawJobDescription.value = ''
+  parsedFieldLabels.value = []
+}
 
 function saveDraft() {
   if (!_validate()) return
@@ -1052,6 +1277,50 @@ function exportData(type) {
 }
 .export-menu-divider { height: 1px; background: var(--border); margin: 3px 0; }
 
+/* ── 新建岗位：智能标准化录入 ── */
+.smart-entry-card {
+  position: relative; overflow: hidden;
+  border-color: var(--red-border);
+  background: linear-gradient(145deg, #fff 0%, #fffafb 100%);
+}
+.smart-entry-card::after {
+  content: ''; position: absolute; width: 180px; height: 180px;
+  right: -75px; top: -90px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(164,31,51,.09), rgba(164,31,51,0) 70%);
+  pointer-events: none;
+}
+.smart-entry-head { display: flex; align-items: flex-start; gap: .8rem; position: relative; z-index: 1; }
+.smart-entry-icon {
+  width: 38px; height: 38px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  color: var(--red); background: var(--red-light); border: 1px solid var(--red-border);
+}
+.smart-entry-icon i { font-size: 1.1rem; }
+.smart-entry-title { font-size: .94rem; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: .45rem; }
+.smart-entry-title span {
+  font-size: .66rem; font-weight: 700; color: var(--red);
+  background: var(--red-light); border: 1px solid var(--red-border);
+  padding: .1rem .45rem; border-radius: 999px;
+}
+.smart-entry-desc { font-size: .78rem; color: var(--ink-2); line-height: 1.55; margin-top: .22rem; }
+.smart-source-input { min-height: 168px; resize: vertical; line-height: 1.65; padding: .8rem .9rem; background: rgba(255,255,255,.82); }
+.smart-entry-actions { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-top: .7rem; }
+.smart-entry-actions > span { font-size: .72rem; color: var(--ink-3); }
+.smart-parse-btn { min-width: 168px; justify-content: center; }
+.smart-parse-btn:disabled { opacity: .68; cursor: wait; }
+.smart-spinner { animation: smartSpin .8s linear infinite; }
+@keyframes smartSpin { to { transform: rotate(360deg); } }
+.smart-result {
+  display: flex; align-items: flex-start; gap: .6rem;
+  margin-top: .9rem; padding: .75rem .85rem;
+  border-radius: var(--r-md); background: #f0faf3; border: 1px solid #c8e8d1;
+  color: #28673c;
+}
+.smart-result > i { font-size: 1rem; margin-top: .05rem; flex-shrink: 0; }
+.smart-result strong { display: block; font-size: .8rem; }
+.smart-result p { font-size: .72rem; line-height: 1.55; margin-top: .16rem; color: #4e725a; }
+.basic-info-card { scroll-margin-top: 82px; }
+
 /* ── 投递模式切换 ── */
 .mode-btn {
   flex: 1; display: flex; align-items: center; gap: .75rem;
@@ -1250,5 +1519,11 @@ function exportData(type) {
   font-size: .82rem;
   color: var(--ink);
   line-height: 1.55;
+}
+
+@media (max-width: 720px) {
+  .smart-entry-actions { align-items: stretch; flex-direction: column; }
+  .smart-parse-btn { width: 100%; }
+  .smart-source-input { min-height: 210px; }
 }
 </style>
