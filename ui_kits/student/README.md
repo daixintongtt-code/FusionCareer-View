@@ -142,17 +142,17 @@ GET  /questionnaire/my/list         我的投递列表与状态数量
 #### AdminView — 管理后台
 
 ```
-GET    /internal/job-post/list                      岗位列表（含所有状态）
-POST   /internal/job-post                           创建岗位
-PUT    /internal/job-post/{id}                      更新岗位
-DELETE /internal/job-post/{id}                      删除岗位
-POST   /internal/questionnaire/questions/batch/{id} 批量保存问卷题目（整组替换）
-GET    /internal/questionnaire/answers/job/{id}     分页查看投递
-GET    /internal/questionnaire/answers/job/{id}/export?format=excel  导出问卷 Excel
-GET    /internal/questionnaire/answers/job/{id}/export?format=zip    导出简历附件 ZIP
+GET    /admin/job-post/list                              岗位列表（含所有状态）
+POST   /admin/job-post                                   创建岗位
+PUT    /admin/job-post/{id}                              更新岗位
+DELETE /admin/job-post/{id}                              删除岗位
+POST   /admin/questionnaire/questions/batch/{id}         批量保存问卷题目（整组替换）
+GET    /admin/questionnaire/answers/job/{id}             分页查看投递
+GET    /admin/questionnaire/answers/job/{id}/export?format=csv  导出问卷 CSV
+GET    /admin/questionnaire/answers/job/{id}/export?format=zip  导出问卷与简历 ZIP
 ```
 
-> 管理端接口路径前缀 `/internal/**`，不经过 Sa-Token，直接调用。
+> 管理端接口路径前缀 `/admin/**`，必须携带 ADMIN 用户的 `Fusion-Token`。
 
 ### 后端尚未实现、前端已预留的接口
 

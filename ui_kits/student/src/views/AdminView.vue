@@ -41,6 +41,12 @@
         <div v-if="v==='list'">
           <div class="page-hd">
             <div><h1><i class="ti ti-list" />岗位列表</h1></div>
+            <div class="page-hd-actions">
+              <input ref="jobFile" type="file" accept="application/json,.json" hidden @change="createJobs" />
+              <button class="btn btn-secondary btn-sm" @click="jobFile?.click()">
+                <i class="ti ti-file-import" />批量导入 JSON
+              </button>
+            </div>
           </div>
 
           <!-- 工具栏 -->
@@ -87,7 +93,7 @@
                     <div class="tbl-acts">
                       <div class="tbl-btn" @click="openEdit(j)"><span class="tbl-tip">编辑</span><i class="ti ti-edit" /></div>
                       <div v-if="j.status==='OFFLINE'" class="tbl-btn approve" @click="publish(j)"><span class="tbl-tip">发布上线</span><i class="ti ti-send" /></div>
-                      <div v-else-if="j.status==='PUBLISHED'" class="tbl-btn" @click="toast.show('已停止发布')"><span class="tbl-tip">停止发布</span><i class="ti ti-send-off" /></div>
+                      <div v-else-if="j.status==='PUBLISHED'" class="tbl-btn" @click="unpublishJob(j)"><span class="tbl-tip">停止发布</span><i class="ti ti-send-off" /></div>
                       <div v-if="j.status!=='OFFLINE'" class="tbl-btn" @click="goJobResumes(j)"><span class="tbl-tip">查看简历</span><i class="ti ti-file-text" /></div>
                     </div>
                   </td>
@@ -353,7 +359,7 @@
 
           <div class="card card-p">
             <div style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem">
-              <button class="btn btn-secondary btn-sm" @click="v=editingId?'list':'list'; _resetForm()">取消</button>
+              <button class="btn btn-secondary btn-sm" @click="v='list'; resetForm()">取消</button>
               <button class="btn btn-secondary btn-sm" @click="saveDraft"><i class="ti ti-device-floppy" />保存草稿</button>
               <button class="btn btn-primary btn-sm" @click="publishJob"><i class="ti ti-send" />发布上线</button>
             </div>
@@ -641,6 +647,7 @@ import { ref, computed, onMounted } from 'vue'
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
 import { logoutUser } from '@/lib/auth'
+import { readJson } from '@/lib/api'
 
 const toast = useToast()
 const v     = ref('list')
@@ -648,8 +655,7 @@ const sk    = ref('')
 const sf    = ref('')
 const selected     = ref([])
 const draftSelected = ref([])
-const createSrc    = ref('手动填写')
-const sources      = ['手动填写', '表格批量导入']
+const jobFile = ref(null)
 
 // 通用确认弹窗
 const show_confirm = ref(false)
@@ -659,17 +665,58 @@ function doConfirm() { confirm_cb.value?.(); show_confirm.value = false }
 function cancelConfirm() { show_confirm.value = false }
 
 
-const jobs = ref([
-  { id:1, positionName:'新媒体编辑记者', companyName:'新华社', workCity:'上海', workEndDate:'2025-06-30', status:'PUBLISHED', apps:23, recommended:true,  sourceUrl:'', sourceType:'PLATFORM', publishedAt:'2025-05-20' },
-  { id:2, positionName:'内容运营实习生', companyName:'腾讯新闻', workCity:'深圳', workEndDate:'2025-07-10', status:'OFFLINE',  apps:null, recommended:false, sourceUrl:'', sourceType:'PLATFORM', publishedAt:'2025-05-18' },
-  { id:3, positionName:'企业公关传播实习', companyName:'字节跳动', workCity:'上海', workEndDate:'2025-07-15', status:'OFFLINE',  apps:null, recommended:false, sourceUrl:'https://job.bytedance.com/1', sourceType:'CRAWL', publishedAt:'2025-05-17' },
-  { id:4, positionName:'数据新闻记者', companyName:'澎湃新闻', workCity:'上海', workEndDate:'2025-06-20', status:'OFFLINE',  apps:null, recommended:false, sourceUrl:'https://job.thepaper.cn/2', sourceType:'CRAWL', publishedAt:'2025-05-16' },
-  { id:5, positionName:'新媒体编辑（人民网）', companyName:'人民日报社', workCity:'北京', workEndDate:'2025-07-01', status:'PUBLISHED', apps:11, recommended:true,  sourceUrl:'', sourceType:'PLATFORM', publishedAt:'2025-05-12' },
-  { id:6, positionName:'财经记者', companyName:'财新传媒', workCity:'上海', workEndDate:'2025-05-01', status:'EXPIRED',  apps:8,  recommended:false, sourceUrl:'', sourceType:'PLATFORM', publishedAt:'2025-04-10' },
-])
+const jobs = ref([])
 const STATUS_LABEL = { PUBLISHED:'发布中', OFFLINE:'未发布', EXPIRED:'已截止' }
 const STATUS_CLASS = { PUBLISHED:'badge-green', OFFLINE:'badge-gray', EXPIRED:'badge-amber' }
 const STATUS_ORDER = { PUBLISHED:0, OFFLINE:1, EXPIRED:2 }
+
+async function loadJobs() {
+  try {
+    const readPage = await readJson('/admin/job-post/list?page=1&size=100')
+    jobs.value = (readPage?.list || []).map(readJob => ({
+      ...readJob,
+      apps: readJob.applicationCount ?? 0,
+      publishedAt: (readJob.createdAt || '').slice(0, 10),
+    }))
+  } catch (readError) {
+    jobs.value = []
+    toast.error(readError?.message || '加载岗位失败')
+  }
+}
+
+async function createJobs(readEvent) {
+  const readFile = readEvent.target.files?.[0]
+  if (!readFile) return
+  try {
+    const createRequests = JSON.parse(await readFile.text())
+    if (!Array.isArray(createRequests) || createRequests.length === 0) throw new Error('请提供非空 JSON 数组')
+    await readJson('/admin/job-post/batch', {
+      method:'POST', body:JSON.stringify(createRequests),
+    })
+    await loadJobs()
+    toast.success(`已导入 ${createRequests.length} 条岗位`)
+  } catch (readError) {
+    toast.error(readError?.message || '批量导入失败')
+  } finally {
+    readEvent.target.value = ''
+  }
+}
+
+function buildJobRequest(readJob, updateStatus = readJob.status) {
+  const readKeys = [
+    'sourceType', 'sourceUrl', 'companyName', 'department', 'positionName',
+    'jobCategory', 'jobSubCategory', 'recruitType', 'headcount',
+    'workStartDate', 'workEndDate', 'workDaysPerWeek', 'workDurationType',
+    'workPeriodType', 'workMode', 'workCity', 'workProvince', 'workLocation',
+    'salaryMin', 'salaryMax', 'salaryDisplay', 'jobDesc', 'reqEduLevel',
+    'reqMajor', 'reqGradYear', 'reqSkills', 'reqOther', 'recommended',
+  ]
+  const createRequest = Object.fromEntries(readKeys.map(readKey => [
+    readKey, readJob[readKey] === '' ? null : readJob[readKey],
+  ]))
+  createRequest.status = updateStatus
+  return createRequest
+}
 const filteredJobs = computed(() =>
   jobs.value
     .filter(j =>
@@ -689,33 +736,57 @@ const draftCount  = computed(() => draftJobs.value.length)
 
 function toggleAll(c) { selected.value = c ? filteredJobs.value.map(j=>j.id) : [] }
 function toggleSel(id) { selected.value.includes(id) ? selected.value = selected.value.filter(i=>i!==id) : selected.value.push(id) }
-function toggleRec(j) { j.recommended=!j.recommended; toast.success(j.recommended?'已设为推荐':'已取消推荐') }
-function publish(j) { j.status='PUBLISHED'; toast.success('已发布上线') }
+async function toggleRec(updateJob) {
+  const updateRecommended = !updateJob.recommended
+  await updateJobPost(updateJob, { recommended:updateRecommended })
+  toast.success(updateRecommended ? '已设为推荐' : '已取消推荐')
+}
+async function publish(updateJob) {
+  await updateJobPost(updateJob, { status:'PUBLISHED' })
+  toast.success('已发布上线')
+}
+async function unpublishJob(updateJob) {
+  await updateJobPost(updateJob, { status:'OFFLINE' })
+  toast.success('已停止发布')
+}
+
+async function updateJobPost(updateJob, updateFields) {
+  const updateValue = { ...updateJob, ...updateFields }
+  await readJson(`/admin/job-post/${updateJob.id}`, {
+    method:'PUT', body:JSON.stringify(buildJobRequest(updateValue, updateValue.status)),
+  })
+  Object.assign(updateJob, updateFields)
+}
 
 // 批量操作
 const publishableCount = computed(() => selected.value.filter(id => jobs.value.find(j=>j.id===id)?.status === 'OFFLINE').length)
 const offlinableCount  = computed(() => selected.value.filter(id => jobs.value.find(j=>j.id===id)?.status === 'PUBLISHED').length)
 const recableCount = computed(() => selected.value.filter(id => jobs.value.find(j=>j.id===id)?.status === 'PUBLISHED').length)
 
-function bulkPublish() {
+async function bulkPublish() {
   const n = publishableCount.value
   if (!n) return
   const skipped = selected.value.length - n
-  jobs.value.forEach(j => { if (selected.value.includes(j.id) && j.status === 'OFFLINE') j.status = 'PUBLISHED' })
+  const updateJobs = jobs.value.filter(readJob => selected.value.includes(readJob.id)
+    && readJob.status === 'OFFLINE')
+  await Promise.all(updateJobs.map(updateJob => updateJobPost(updateJob, { status:'PUBLISHED' })))
   toast.success(skipped > 0 ? `已发布 ${n} 条，跳过 ${skipped} 条（已发布或已截止）` : `已发布 ${n} 条`)
   selected.value = []
 }
-function bulkRec(on) {
+async function bulkRec(updateRecommended) {
   const n = selected.value.length
-  jobs.value.forEach(j => { if (selected.value.includes(j.id)) j.recommended = on })
-  toast.success(on ? `已将 ${n} 条设为推荐` : `已取消 ${n} 条推荐`)
+  const updateJobs = jobs.value.filter(readJob => selected.value.includes(readJob.id))
+  await Promise.all(updateJobs.map(updateJob => updateJobPost(updateJob, { recommended:updateRecommended })))
+  toast.success(updateRecommended ? `已将 ${n} 条设为推荐` : `已取消 ${n} 条推荐`)
   selected.value = []
 }
-function bulkOffline() {
+async function bulkOffline() {
   const n = offlinableCount.value
   if (!n) return
   const skipped = selected.value.length - n
-  jobs.value.forEach(j => { if (selected.value.includes(j.id) && j.status === 'PUBLISHED') j.status = 'OFFLINE' })
+  const updateJobs = jobs.value.filter(readJob => selected.value.includes(readJob.id)
+    && readJob.status === 'PUBLISHED')
+  await Promise.all(updateJobs.map(updateJob => updateJobPost(updateJob, { status:'OFFLINE' })))
   toast.success(skipped > 0 ? `已停止发布 ${n} 条，跳过 ${skipped} 条（未发布或已截止）` : `已停止发布 ${n} 条`)
   selected.value = []
 }
@@ -723,11 +794,16 @@ function bulkDelete(ids) {
   const targets = ids ?? selected.value
   const n = targets.length
   confirm_msg.value = `确认删除选中的 ${n} 条岗位？删除后无法找回。`
-  confirm_cb.value = () => {
-    jobs.value = jobs.value.filter(j => !targets.includes(j.id))
-    toast.success(`已删除 ${n} 条`)
-    selected.value = selected.value.filter(id => !targets.includes(id))
-    draftSelected.value = draftSelected.value.filter(id => !targets.includes(id))
+  confirm_cb.value = async () => {
+    try {
+      await Promise.all(targets.map(deleteId => readJson(`/admin/job-post/${deleteId}`, { method:'DELETE' })))
+      jobs.value = jobs.value.filter(readJob => !targets.includes(readJob.id))
+      toast.success(`已删除 ${n} 条`)
+      selected.value = selected.value.filter(readId => !targets.includes(readId))
+      draftSelected.value = draftSelected.value.filter(readId => !targets.includes(readId))
+    } catch (readError) {
+      toast.error(readError?.message || '删除失败')
+    }
   }
   show_confirm.value = true
 }
@@ -735,9 +811,10 @@ function bulkDelete(ids) {
 // 草稿箱批量操作
 function draftToggleAll(c) { draftSelected.value = c ? draftJobs.value.map(j=>j.id) : [] }
 function draftToggleSel(id) { draftSelected.value.includes(id) ? draftSelected.value = draftSelected.value.filter(i=>i!==id) : draftSelected.value.push(id) }
-function draftBulkPublish() {
+async function draftBulkPublish() {
   const n = draftSelected.value.length
-  jobs.value.forEach(j => { if (draftSelected.value.includes(j.id)) { j.status='PUBLISHED' } })
+  const updateJobs = jobs.value.filter(readJob => draftSelected.value.includes(readJob.id))
+  await Promise.all(updateJobs.map(updateJob => updateJobPost(updateJob, { status:'PUBLISHED' })))
   toast.success(`已发布 ${n} 条`)
   draftSelected.value = []
 }
@@ -780,55 +857,70 @@ function moveQ(idx, dir) {
 const nj = ref(NJ_INIT())
 const editingId = ref(null)
 
-function openEdit(j) {
-  editingId.value = j.id
-  nj.value = { ...NJ_INIT(), ...j, questions: j.questions ? [...j.questions] : [] }
-  deliveryMode.value = j.sourceUrl ? 'external' : 'internal'
-  v.value = 'create'
+async function openEdit(readJob) {
+  try {
+    const readQuestions = readJob.sourceUrl
+      ? []
+      : await readJson(`/admin/questionnaire/questions/${readJob.id}`)
+    editingId.value = readJob.id
+    nj.value = { ...NJ_INIT(), ...readJob, questions:readQuestions || [] }
+    deliveryMode.value = readJob.sourceUrl ? 'external' : 'internal'
+    v.value = 'create'
+  } catch (readError) {
+    toast.error(readError?.message || '加载岗位失败')
+  }
 }
-function _validate() {
+function validateJob() {
   if (!nj.value.positionName || !nj.value.companyName) { toast.error('请填写岗位名称和公司'); return false }
   if (!nj.value.jobCategory) { toast.error('请选择岗位大类'); return false }
   return true
 }
-function _resetForm() { nj.value = NJ_INIT(); editingId.value = null; isExternal.value = false; deliveryMode.value = 'internal' }
+function resetForm() { nj.value = NJ_INIT(); editingId.value = null; isExternal.value = false; deliveryMode.value = 'internal' }
 
-function saveDraft() {
-  if (!_validate()) return
-  const now = new Date().toISOString().slice(0,10)
-  if (editingId.value) {
-    const j = jobs.value.find(j => j.id === editingId.value)
-    if (j) Object.assign(j, { ...nj.value })
-    toast.success('已保存修改')
-  } else {
-    jobs.value.unshift({ id:Date.now(), ...nj.value, status:'OFFLINE', apps:null, recommended:false, publishedAt:now })
-    toast.success('已保存为草稿')
-  }
-  v.value = 'list'; _resetForm()
+async function saveDraft() {
+  if (!validateJob()) return
+  const readEditing = !!editingId.value
+  if (await saveJob('OFFLINE')) toast.success(readEditing ? '已保存修改' : '已保存为草稿')
 }
 
-function publishJob() {
-  if (!_validate()) return
-  const now = new Date().toISOString().slice(0,10)
-  if (editingId.value) {
-    const j = jobs.value.find(j => j.id === editingId.value)
-    if (j) {
-      const wasPublished = j.status === 'PUBLISHED'
-      const doSave = () => {
-        Object.assign(j, { ...nj.value, status:'PUBLISHED', publishedAt: j.publishedAt || now })
-        toast.success('修改已保存并立即生效')
-        v.value = 'list'; _resetForm()
-      }
-      if (wasPublished) {
-        confirm_cb.value = doSave
-        confirm_msg.value = '该岗位当前已发布，修改将立即对学生生效。确认保存？'
-        show_confirm.value = true
-      } else { doSave() }
+async function publishJob() {
+  if (!validateJob()) return
+  if (await saveJob('PUBLISHED')) toast.success('已发布，学生可见')
+}
+
+async function saveJob(updateStatus) {
+  try {
+    let readJobId = editingId.value
+    if (readJobId) {
+      await readJson(`/admin/job-post/${readJobId}`, {
+        method:'PUT', body:JSON.stringify(buildJobRequest(nj.value, updateStatus)),
+      })
+    } else {
+      const createJob = await readJson('/admin/job-post', {
+        method:'POST', body:JSON.stringify(buildJobRequest(nj.value, updateStatus)),
+      })
+      readJobId = createJob.id
     }
-  } else {
-    jobs.value.unshift({ id:Date.now(), ...nj.value, status:'PUBLISHED', apps:0, recommended:false, publishedAt:now })
-    toast.success('已发布，学生可见')
-    v.value = 'list'; _resetForm()
+    if (deliveryMode.value === 'internal') {
+      const updateQuestions = nj.value.questions.map((readQuestion, readIndex) => ({
+        sortOrder:readIndex + 1,
+        title:readQuestion.title,
+        questionType:readQuestion.questionType,
+        options:readQuestion.options || [],
+        required:!!readQuestion.required,
+        placeholder:readQuestion.placeholder || null,
+      }))
+      await readJson(`/admin/questionnaire/questions/batch/${readJobId}`, {
+        method:'POST', body:JSON.stringify(updateQuestions),
+      })
+    }
+    await loadJobs()
+    v.value = 'list'
+    resetForm()
+    return true
+  } catch (readError) {
+    toast.error(readError?.message || '保存岗位失败')
+    return false
   }
 }
 
@@ -984,6 +1076,7 @@ function previewResume(r) {
 }
 
 onMounted(() => {
+  loadJobs()
   window.addEventListener('click', () => {
     exportMenuOpen.value = false
     exportMenuOpen2.value = false
