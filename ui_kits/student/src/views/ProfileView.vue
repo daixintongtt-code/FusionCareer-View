@@ -87,6 +87,9 @@
                   <div style="font-size:.733rem;color:var(--ink-2)">{{ r.size }}</div>
                 </div>
                 <div style="display:flex;gap:.3rem">
+                  <button v-if="failedFileId===r.id" class="btn btn-secondary btn-sm" @click="retryFile(r)">
+                    <i class="ti ti-refresh" />重试解析
+                  </button>
                   <button class="btn-icon btn" title="下载" @click="downloadFile(r)"><i class="ti ti-download" /></button>
                   <button class="btn-icon btn" title="删除" @click="deleteFile(index)"><i class="ti ti-trash" /></button>
                 </div>
@@ -98,9 +101,18 @@
                 style="display:none"
                 @change="uploadFile"
               />
-              <div class="upload-zone" style="margin-top:1rem" @click="fileInput?.click()">
+              <label style="display:flex;align-items:center;gap:.5rem;margin-top:1rem;font-size:.82rem;color:var(--ink-2)">
+                <input type="checkbox" v-model="updateProfile" />
+                使用简历解析结果更新我的资料和在线简历
+              </label>
+              <div v-if="updateProfile" style="font-size:.73rem;color:var(--ink-3);margin-top:.4rem">
+                简历内容将发送至配置的 AI 服务进行字段提取，仅覆盖识别到的非空字段。
+              </div>
+              <div class="upload-zone" style="margin-top:1rem"
+                :style="uploadingFile ? 'opacity:.6;pointer-events:none' : ''"
+                @click="fileInput?.click()">
                 <i class="ti ti-cloud-upload" />
-                <div class="uz-title">上传新简历</div>
+                <div class="uz-title">{{ uploadingFile ? '正在上传并处理…' : '上传新简历' }}</div>
                 <div class="uz-hint">支持 PDF、JPG、PNG，单文件不超过 20 MB · {{ readQuota }}</div>
               </div>
             </div>
@@ -369,6 +381,9 @@ const fileInput = ref(null)
 const showDeleteModal = ref(false)
 const deleteIndex = ref(null)
 const readQuota = ref('配额加载中')
+const updateProfile = ref(false)
+const uploadingFile = ref(false)
+const failedFileId = ref(null)
 
 // ── 简历文件（动态加载）──
 const resumes = ref([])
@@ -552,16 +567,43 @@ async function uploadFile(e) {
     e.target.value = ''
     return
   }
+  uploadingFile.value = true
   try {
     const uploadBody = new FormData()
     uploadBody.append('file', file)
-    await uploadForm('/user/resume/file/upload', uploadBody)
-    toast.success('简历上传成功')
+    uploadBody.append('updateProfile', String(updateProfile.value))
+    const readResult = await uploadForm('/user/resume/file/upload', uploadBody)
+    if (readResult?.parseStatus === 'SUCCESS') {
+      failedFileId.value = null
+      const readCount = (readResult.updatedProfileFields?.length || 0)
+        + (readResult.updatedResumeFields?.length || 0)
+      toast.success(`简历上传成功，已更新 ${readCount} 个字段`)
+      await Promise.all([loadProfile(), loadResume()])
+    } else if (readResult?.parseStatus === 'FAILED') {
+      failedFileId.value = readResult.file?.id || null
+      toast.error(readResult.message || '文件已保存，资料更新失败')
+    } else {
+      toast.success('简历上传成功')
+    }
     await Promise.all([loadFiles(), loadQuota()])
   } catch (readError) {
     toast.error(readError?.message || '上传失败，请检查网络')
+  } finally {
+    uploadingFile.value = false
+    e.target.value = ''
   }
-  e.target.value = ''
+}
+
+async function retryFile(readFile) {
+  try {
+    const readResult = await readJson(`/user/resume/file/${readFile.id}/parse`, { method:'POST' })
+    if (readResult?.parseStatus !== 'SUCCESS') throw new Error(readResult?.message || '解析失败')
+    failedFileId.value = null
+    await Promise.all([loadProfile(), loadResume()])
+    toast.success('资料更新成功')
+  } catch (readError) {
+    toast.error(readError?.message || '解析失败，请稍后重试')
+  }
 }
 
 async function downloadFile(readFile) {
