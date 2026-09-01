@@ -116,6 +116,36 @@
           </div>
 
           <div class="card card-p" style="margin-bottom:1rem">
+            <div class="form-section-title">智能识别岗位</div>
+            <textarea
+              class="form-control"
+              style="min-height:150px"
+              v-model="jobText"
+              placeholder="粘贴完整岗位描述，系统会识别并填充下方标准字段…"
+            />
+            <div style="display:flex;align-items:center;gap:.5rem;margin-top:.75rem;flex-wrap:wrap">
+              <button class="btn btn-secondary" :disabled="structuringJob" @click="structureJob">
+                <i class="ti ti-wand" />{{ structuringJob ? '正在识别…' : '智能识别并填充' }}
+              </button>
+              <span v-if="structuredJobs.length" style="font-size:.78rem;color:var(--ink-2)">
+                已识别 {{ structuredJobs.length }} 个岗位，结果不会自动保存或发布
+              </span>
+            </div>
+            <div v-if="structuredJobs.length>1" style="display:flex;gap:.4rem;margin-top:.75rem;flex-wrap:wrap">
+              <button v-for="(readJob,readIndex) in structuredJobs" :key="readIndex"
+                :class="['btn','btn-sm',structuredIndex===readIndex?'btn-primary':'btn-secondary']"
+                @click="selectJob(readIndex)">
+                {{ readJob.positionName || `岗位 ${readIndex + 1}` }}
+              </button>
+            </div>
+            <div v-if="structureWarnings.length" style="font-size:.75rem;color:var(--gold-dark);margin-top:.75rem">
+              <div v-for="(readWarning,readIndex) in structureWarnings" :key="readIndex">
+                <i class="ti ti-alert-triangle" /> {{ readWarning }}
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-p" style="margin-bottom:1rem">
             <div class="form-section-title">基本信息</div>
             <div class="grid-2">
               <div class="form-group"><label class="form-label">岗位名称 <span class="req">*</span></label>
@@ -843,9 +873,52 @@ function moveQ(idx, dir) {
 }
 const nj = ref(NJ_INIT())
 const editingId = ref(null)
+const jobText = ref('')
+const structuringJob = ref(false)
+const structuredJobs = ref([])
+const structuredIndex = ref(-1)
+const structureWarnings = ref([])
+
+async function structureJob() {
+  if (!jobText.value.trim()) {
+    toast.error('请先粘贴岗位描述')
+    return
+  }
+  structuringJob.value = true
+  try {
+    const readResult = await readJson('/admin/job-post/structure', {
+      method:'POST', body:JSON.stringify({ text:jobText.value }),
+    })
+    structuredJobs.value = (readResult?.jobs || []).map(readJob => ({
+      ...NJ_INIT(), ...readJob, questions:[],
+    }))
+    structureWarnings.value = readResult?.warnings || []
+    if (!structuredJobs.value.length) {
+      toast.error('未识别到有效岗位，请修改原文或手动填写')
+      return
+    }
+    structuredIndex.value = -1
+    selectJob(0)
+    toast.success(`已识别 ${structuredJobs.value.length} 个岗位，请检查后再保存`)
+  } catch (readError) {
+    toast.error(readError?.message || '岗位识别失败')
+  } finally {
+    structuringJob.value = false
+  }
+}
+
+function selectJob(readIndex) {
+  if (structuredIndex.value >= 0) {
+    structuredJobs.value[structuredIndex.value] = { ...nj.value }
+  }
+  structuredIndex.value = readIndex
+  const readJob = structuredJobs.value[readIndex]
+  nj.value = { ...NJ_INIT(), ...readJob, questions:readJob.questions || [] }
+}
 
 async function openEdit(readJob) {
   try {
+    resetForm()
     const readQuestions = readJob.sourceUrl
       ? []
       : await readJson(`/admin/questionnaire/questions/${readJob.id}`)
@@ -862,7 +935,15 @@ function validateJob() {
   if (!nj.value.jobCategory) { toast.error('请选择岗位大类'); return false }
   return true
 }
-function resetForm() { nj.value = NJ_INIT(); editingId.value = null; deliveryMode.value = 'internal' }
+function resetForm() {
+  nj.value = NJ_INIT()
+  editingId.value = null
+  deliveryMode.value = 'internal'
+  jobText.value = ''
+  structuredJobs.value = []
+  structuredIndex.value = -1
+  structureWarnings.value = []
+}
 
 async function saveDraft() {
   if (!validateJob()) return
