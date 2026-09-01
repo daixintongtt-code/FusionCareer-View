@@ -1,6 +1,6 @@
 # 复新生涯 FusionCareer — 前端 UI Kit
 
-Vue 3 + Vite 项目，覆盖全部页面。对接后端 `http://localhost:9100`（Spring Boot），认证走复旦 UIS SSO，Sa-Token 鉴权。
+Vue 3 + Vite 项目，覆盖全部页面。浏览器统一请求 `/api`，开发环境由 Vite 代理到本机 Java 9100，生产环境由 Nginx 转发。
 
 ## 快速启动
 

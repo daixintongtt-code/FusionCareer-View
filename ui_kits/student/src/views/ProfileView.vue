@@ -200,7 +200,7 @@ import { useToast } from '@/composables/useToast'
 const router  = useRouter()
 const route   = useRoute()
 const toast   = useToast()
-const BASE    = 'http://localhost:9100'
+const BASE    = '/api'
 const TOKEN   = () => localStorage.getItem('fusion_token') || ''
 const AUTH    = () => ({ 'Fusion-Token': TOKEN() })
 

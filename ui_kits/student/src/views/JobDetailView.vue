@@ -163,7 +163,7 @@ import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const toast = useToast()
-const BASE = 'http://localhost:9100'
+const BASE = '/api'
 const job = ref(null)
 const loading = ref(false)
 const showApply = ref(false)

@@ -223,7 +223,7 @@ import UserNavbar from '@/components/UserNavbar.vue'
 import AppToast from '@/components/AppToast.vue'
 
 const router = useRouter()
-const BASE = 'http://localhost:9100'
+const BASE = '/api'
 const offset = ref(0)
 const CARD_W = 208
 const featured = ref([])
