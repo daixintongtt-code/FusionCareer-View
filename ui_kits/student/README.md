@@ -77,12 +77,15 @@ ui_kits/student/
 Fusion-Token: <token>
 ```
 
-Token 由登录后存入 `localStorage.getItem('fusion_token')`，各 view 统一通过 `AUTH()` 函数获取：
+Token 从 SSO 回跳 fragment 中读取，并以 `fusion-career-token` 保存。页面通过统一 API 客户端附加认证头：
 
 ```js
-const TOKEN = () => localStorage.getItem('fusion_token') || ''
-const AUTH  = () => ({ 'Fusion-Token': TOKEN() })
+import { readJson } from '@/lib/api'
+
+const profile = await readJson('/user/profile/get')
 ```
+
+学生和管理员均使用 UIS 登录；`/user/me` 返回角色，前端路由与后端共同限制 `/admin`。
 
 ### 枚举值对照
 

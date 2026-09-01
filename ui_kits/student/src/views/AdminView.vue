@@ -20,7 +20,7 @@
         <div class="nav-right">
           <div class="nav-avatar">张</div>
           <span style="font-size:.8rem;color:var(--ink-2)">张老师</span>
-          <RouterLink to="/login" class="btn btn-ghost btn-sm"><i class="ti ti-logout" /></RouterLink>
+          <a href="#/login" class="btn btn-ghost btn-sm" @click.prevent="logoutUser"><i class="ti ti-logout" /></a>
         </div>
       </div>
     </nav>
@@ -640,6 +640,7 @@
 import { ref, computed, onMounted } from 'vue'
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
+import { logoutUser } from '@/lib/auth'
 
 const toast = useToast()
 const v     = ref('list')

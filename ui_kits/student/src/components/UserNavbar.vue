@@ -13,12 +13,29 @@
         <RouterLink class="nav-link" to="/profile"><i class="ti ti-user" /> 个人中心</RouterLink>
       </div>
       <div class="nav-right">
-        <RouterLink class="nav-avatar" to="/profile" title="个人中心">李</RouterLink>
-        <RouterLink to="/login" class="nav-logout" title="退出登录"><i class="ti ti-logout" /></RouterLink>
+        <RouterLink class="nav-avatar" to="/profile" title="个人中心">{{ readInitial }}</RouterLink>
+        <a href="#/login" class="nav-logout" title="退出登录" @click.prevent="logoutUser"><i class="ti ti-logout" /></a>
       </div>
     </div>
   </nav>
 </template>
+
+<script setup>
+import { computed, onMounted, ref } from 'vue'
+import { logoutUser, readUser } from '@/lib/auth'
+
+const readName = ref('')
+const readInitial = computed(() => readName.value?.trim().charAt(0) || '我')
+
+onMounted(async () => {
+  try {
+    const readCurrentUser = await readUser()
+    readName.value = readCurrentUser?.username || ''
+  } catch {
+    readName.value = ''
+  }
+})
+</script>
 
 <style scoped>
 .nav-logout {

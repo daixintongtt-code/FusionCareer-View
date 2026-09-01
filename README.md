@@ -1,6 +1,6 @@
 # 复新生涯 FusionCareer — 前端 UI Kit
 
-Vue 3 + Vite 项目，覆盖全部页面。对接后端 `http://localhost:9100`（Spring Boot），认证走复旦 UIS SSO，Sa-Token 鉴权。
+Vue 3 + Vite 项目，覆盖全部页面。浏览器统一请求 `/api`，开发环境由 Vite 代理到本机 Java 9100，生产环境由 Nginx 转发。
 
 ## 快速启动
 
@@ -77,12 +77,15 @@ ui_kits/student/
 Fusion-Token: <token>
 ```
 
-Token 由登录后存入 `localStorage.getItem('fusion_token')`，各 view 统一通过 `AUTH()` 函数获取：
+Token 从 SSO 回跳 fragment 中读取，并以 `fusion-career-token` 保存。页面通过统一 API 客户端附加认证头：
 
 ```js
-const TOKEN = () => localStorage.getItem('fusion_token') || ''
-const AUTH  = () => ({ 'Fusion-Token': TOKEN() })
+import { readJson } from '@/lib/api'
+
+const profile = await readJson('/user/profile/get')
 ```
+
+学生和管理员均使用 UIS 登录；`/user/me` 返回角色，前端路由与后端共同限制 `/admin`。
 
 ### 枚举值对照
 

@@ -16,7 +16,7 @@
               @click="switchView(item.view)"
             ><i :class="['ti',item.icon]" />{{ item.label }}</button>
             <div class="divider" />
-            <RouterLink class="profile-nav-item" to="/login"><i class="ti ti-logout" />退出登录</RouterLink>
+            <a class="profile-nav-item" href="#/login" @click.prevent="logoutUser"><i class="ti ti-logout" />退出登录</a>
           </div>
         </div>
 
@@ -196,6 +196,7 @@ import { useRoute, useRouter } from 'vue-router'
 import UserNavbar from '@/components/UserNavbar.vue'
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
+import { logoutUser } from '@/lib/auth'
 
 const router  = useRouter()
 const route   = useRoute()
