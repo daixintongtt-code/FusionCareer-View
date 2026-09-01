@@ -128,7 +128,7 @@ GET  /user/resume/file/list                     加载我的简历列表（供�
 GET  /user/profile/get              读取个人资料
 PUT  /user/profile/save             保存个人资料（字段：realName, grade, eduLevel, email, phone）
 GET  /user/resume/file/list         简历文件列表
-POST /user/resume/file/upload       上传简历（multipart, field: file，≤20MB）
+POST /user/resume/file/upload       上传简历（multipart，file ≤20MB；updateProfile 为可选布尔值）
 GET  /user/resume/file/{id}/download  下载
 DELETE /user/resume/file/{id}       删除
 GET  /questionnaire/my/list         我的投递列表（需后端实现，未实现时显示空列表）
@@ -139,6 +139,7 @@ GET  /questionnaire/my/list         我的投递列表（需后端实现，未�
 ```
 GET    /internal/job-post/list                      岗位列表（含所有状态）
 POST   /internal/job-post                           创建岗位
+POST   /internal/job-post/normalize                 将原始岗位描述转为标准岗位字段
 PUT    /internal/job-post/{id}                      更新岗位
 DELETE /internal/job-post/{id}                      删除岗位
 POST   /internal/questionnaire/questions/batch/{id} 批量保存问卷题目（整组替换）
@@ -148,6 +149,35 @@ GET    /internal/questionnaire/answers/job/{id}/export?format=zip    导出简�
 ```
 
 > 管理端接口路径前缀 `/internal/**`，不经过 Sa-Token，直接调用。
+
+### 新增功能接口约定
+
+#### 上传简历时同步“我的资料”
+
+`POST /user/resume/file/upload` 沿用原上传接口，新增 multipart 字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `file` | File | 是 | PDF 或图片，最大 20 MB |
+| `updateProfile` | Boolean | 否 | `true` 时识别简历并更新姓名、届次、学历、邮箱、手机号等已识别字段；未识别字段保持原值 |
+
+上传成功后前端会重新调用 `GET /user/profile/get`，确保“我的资料”展示的是后端最终保存结果。
+
+#### 原始岗位描述标准化
+
+`POST /internal/job-post/normalize`
+
+请求体：
+
+```json
+{
+  "rawDescription": "岗位名称：新媒体运营实习生……"
+}
+```
+
+响应的 `data` 使用创建岗位接口的标准字段名，例如 `positionName`、`companyName`、`jobCategory`、`workCity`、`jobDesc`、`reqSkills` 等。前端同时兼容对应的 snake_case 字段，并会将常用中文枚举转换为现有枚举值。管理员可在字段回填后继续编辑，再保存草稿或发布。
+
+本地 UI 演示在该接口未启动时会使用轻量规则完成示例识别；生产环境仍应由算法接口返回最终标准化结果。
 
 ### 后端尚未实现、前端已预留的接口
 
