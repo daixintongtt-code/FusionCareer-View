@@ -34,8 +34,11 @@ export async function readUser(readRefresh = false) {
   return readUserCache
 }
 
-export function loginUser() {
-  window.location.assign('/fudan/login')
+export function loginUser(readRole) {
+  const readQuery = import.meta.env.DEV && readRole
+    ? `?role=${encodeURIComponent(readRole)}`
+    : ''
+  window.location.assign(`/fudan/login${readQuery}`)
 }
 
 export async function logoutUser() {

@@ -23,14 +23,14 @@
           </div>
         </div>
 
-        <button class="btn-primary btn-red" @click="loginUser">
+        <button class="btn-primary btn-red" @click="loginUser('NORMAL')">
           <i class="ti ti-external-link" />
-          <span>前往 UIS 登录</span>
+          <span>{{ isDev ? '本地学生登录' : '前往 UIS 登录' }}</span>
         </button>
 
         <div class="helper-text">
           <i class="ti ti-info-circle" />
-          将跳转至复旦大学统一身份认证页面，认证后自动返回
+          {{ isDev ? '开发模式：使用模拟学生身份' : '将跳转至复旦大学统一身份认证页面，认证后自动返回' }}
         </div>
       </div>
     </div>
@@ -59,9 +59,9 @@
           <div class="helper-text" style="margin-bottom:1rem">
             管理员使用同一 UIS 账号登录，系统将根据后台角色自动进入管理控制台。
           </div>
-          <button class="btn-primary btn-gold" @click="loginUser">
+          <button class="btn-primary btn-gold" @click="loginUser('ADMIN')">
             <i class="ti ti-school" />
-            <span>使用 UIS 登录</span>
+            <span>{{ isDev ? '本地管理员登录' : '使用 UIS 登录' }}</span>
           </button>
         </div>
       </div>
@@ -74,6 +74,7 @@ import { ref } from 'vue'
 import { loginUser } from '@/lib/auth'
 
 const showAdminModal = ref(false)
+const isDev = import.meta.env.DEV
 </script>
 
 <style scoped>
