@@ -160,6 +160,7 @@ import { useRoute } from 'vue-router'
 import UserNavbar from '@/components/UserNavbar.vue'
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
+import { readJson } from '@/lib/api'
 
 const route = useRoute()
 const toast = useToast()
@@ -366,29 +367,18 @@ async function submitApply() {
 }
 
 onMounted(() => {
-  fetchJob()
+  loadJob()
   loadMyResumes()
 })
 
-// fetchJob 内部加载完岗位后再加载题目
-async function fetchJob() {
+// loadJob 内部加载完岗位后再加载题目
+async function loadJob() {
   loading.value = true
   try {
-    var res = await fetch(BASE + '/job/' + route.params.id, {
-      headers: { 'Fusion-Token': localStorage.getItem('fusion_token') || '' }
-    })
-    var data = await res.json()
-    if (data.code === 200 && data.data) {
-      job.value = data.data
-    } else {
-      throw new Error('not found')
-    }
-  } catch (e) {
-    var id = Number(route.params.id)
+    job.value = await readJson(`/job/${route.params.id}`)
+  } catch (readError) {
     job.value = null
-    for (var i = 0; i < MOCK.length; i++) {
-      if (MOCK[i].id === id) { job.value = MOCK[i]; break }
-    }
+    toast.error(readError?.message || '加载岗位失败')
   } finally {
     loading.value = false
     // 加载完岗位后再拉问卷题目

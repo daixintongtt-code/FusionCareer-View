@@ -95,10 +95,10 @@ const profile = await readJson('/user/profile/get')
 |---------|---------|---------------|
 | 岗位大类 | 新闻媒体 / 企业公司 / 党政机关 / 学术教职 / 其他 | `MEDIA` / `ENTERPRISE` / `GOVERNMENT` / `ACADEMIC` / `OTHER` |
 | 招聘类型 | 大实习 / 小实习 / 日常实习 / 应届招聘 | `BIG_INTERNSHIP` / `SMALL_INTERNSHIP` / `DAILY_INTERNSHIP` / `CAMPUS_RECRUITMENT` |
-| 工作形式 | 线上 / 线下 / 线上线下均可 | `ONLINE` / `OFFLINE` / `BOTH` |
+| 工作形式 | 线上 / 线下 / 线上线下均可 | `ONLINE` / `OFFLINE` / `HYBRID` |
 | 实习时长 | 3个月以内 / 3–6个月 / 6个月以上 | `LESS_THAN_THREE_MONTHS` / `THREE_TO_SIX_MONTHS` / `MORE_THAN_SIX_MONTHS` |
 | 每周天数 | 3天 / 4天 / 5天 | `ONE_TO_TWO_DAYS` / `THREE_TO_FOUR_DAYS` / `FIVE_DAYS` |
-| 学历层次 | 本科生 / 学术硕士 / 专业硕士 / 博士 | `BACHELOR` / `ACADEMIC_MASTER` / `PROFESSIONAL_MASTER` / `DOCTORATE` |
+| 学历层次 | 本科生 / 学术硕士 / 专业硕士 / 博士 | `UNDERGRADUATE` / `ACADEMIC_MASTER` / `PROFESSIONAL_MASTER` / `DOCTORAL` |
 
 ### 各页面调用的接口
 
