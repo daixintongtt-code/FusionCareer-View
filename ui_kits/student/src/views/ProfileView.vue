@@ -116,7 +116,7 @@
                   @click="activeTab=t.k"
                 >{{ t.label }}<span v-if="t.n" class="tab-count">{{ t.n }}</span></button>
               </div>
-              <div v-for="a in filteredApps" :key="a.title" class="app-row" @click="openJobDetail">
+              <div v-for="a in filteredApps" :key="a.id" class="app-row" @click="openJobDetail(a)">
                 <div class="job-logo" style="width:36px;height:36px">{{ a.abbr }}</div>
                 <div style="flex:1;min-width:0">
                   <div style="display:flex;align-items:center;gap:.45rem">
@@ -125,10 +125,10 @@
                   </div>
                   <div style="font-size:.773rem;color:var(--ink-2)">{{ a.company }}</div>
                 </div>
-                <div :title="isExpired(a.deadline) ? '已截止，不可修改' : '修改投递'">
-                  <button class="btn-icon btn" :disabled="isExpired(a.deadline)"
-                    :style="isExpired(a.deadline) ? 'opacity:.35;cursor:not-allowed' : ''"
-                    @click.stop="!isExpired(a.deadline) && openEditApply(a)">
+                <div :title="canEditApply(a) ? '修改投递' : '当前状态不可修改'">
+                  <button class="btn-icon btn" :disabled="!canEditApply(a)"
+                    :style="!canEditApply(a) ? 'opacity:.35;cursor:not-allowed' : ''"
+                    @click.stop="canEditApply(a) && openEditApply(a)">
                     <i class="ti ti-edit" />
                   </button>
                 </div>
@@ -152,7 +152,7 @@
             <button class="btn-icon btn" @click="showEditApply=false"><i class="ti ti-x" /></button>
           </div>
           <div class="apply-modal-body">
-            <div v-for="(q, qi) in mockQuestions" :key="q.id" class="aq-item">
+            <div v-for="(q, qi) in editQuestions" :key="q.id" class="aq-item">
               <div class="aq-label">{{ qi+1 }}. {{ q.title }}<span v-if="q.required" style="color:var(--red)"> *</span></div>
               <input v-if="q.type==='TEXT'" class="form-control" v-model="editAnswers[q.id]" :placeholder="q.placeholder||'请填写'" />
               <textarea v-else-if="q.type==='TEXTAREA'" class="form-control" style="min-height:80px" v-model="editAnswers[q.id]" :placeholder="q.placeholder||'请填写'"></textarea>
@@ -170,18 +170,18 @@
                 <div v-if="editAnswers[q.id]" class="resume-picker-current">
                   <i class="ti ti-file-check" style="color:#1e6636"></i>
                   <span>{{ editAnswers[q.id] }}</span>
-                  <button class="resume-picker-clear" @click="editAnswers[q.id]=null" title="取消选择"><i class="ti ti-x" /></button>
+                  <button class="resume-picker-clear" @click="clearEditFile(q.id)" title="取消选择"><i class="ti ti-x" /></button>
                 </div>
                 <div class="resume-picker-opts">
                   <div class="resume-picker-section-label">从我的简历选择</div>
-                  <div v-for="r in resumes" :key="r.name"
+                  <div v-for="r in editFiles" :key="r.name"
                     class="resume-picker-item"
-                    :class="{ selected: editAnswers[q.id]===r.name }"
-                    @click="editAnswers[q.id]=r.name"
+                    :class="{ selected: editFileIds[q.id]===r.id }"
+                    @click="selectEditFile(q.id, r)"
                   >
                     <i :class="['ti', r.icon]" />
                     <span>{{ r.name }}</span>
-                    <i v-if="editAnswers[q.id]===r.name" class="ti ti-circle-check-filled" style="color:var(--red);margin-left:auto" />
+                    <i v-if="editFileIds[q.id]===r.id" class="ti ti-circle-check-filled" style="color:var(--red);margin-left:auto" />
                   </div>
                   <div class="resume-picker-section-label" style="margin-top:.6rem">或上传本地文件</div>
                   <div class="resume-picker-item resume-picker-upload" @click="triggerEditFile(q.id)">
@@ -226,6 +226,20 @@ import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
 import { logoutUser, readUser } from '@/lib/auth'
 import { downloadFile as downloadBlob, readJson, readToken, uploadForm } from '@/lib/api'
+import {
+  applyParsedToProfileForm,
+  canEditApplication,
+  loadMyAnswerRecord,
+  loadMyApplicationsPage,
+  loadQuestionnaireBundle,
+  loadResumeFileList,
+  mapResumeFilesForPicker,
+  submissionStatusToTabKey,
+  submitQuestionnaire,
+  uploadQuestionnaireFile,
+  validateQuestionnaireUploadFile,
+  validateRequiredAnswers,
+} from '@/composables/useQuestionnaireForm'
 
 const router  = useRouter()
 const route   = useRoute()
@@ -258,8 +272,8 @@ function switchView(nextView) {
   if (!validViews.includes(nextView)) return
   router.push({ path: '/profile', query: { tab: nextView } })
 }
-function openJobDetail() {
-  router.push({ path: '/job/1', query: { from: 'applications' } })
+function openJobDetail(readApplication) {
+  router.push({ path: `/job/${readApplication.jobPostId}`, query: { from: 'applications' } })
 }
 
 const activeTab = ref('all')
@@ -385,6 +399,7 @@ async function loadQuota() {
 
 // ── 我的投递（动态加载）──
 const apps = ref([])
+const tabCounts = ref({ all:0, draft:0, pending:0, done:0 })
 const RECRUIT_BADGE = {
   '大实习': 'badge-blue', '小实习': 'badge-green',
   '日常实习': 'badge-amber', '应届招聘': 'badge-red', '应届生招聘': 'badge-red',
@@ -396,40 +411,55 @@ const RECRUIT_LABEL = {
 }
 async function loadApplications() {
   try {
-    const res = await fetch(`${BASE}/questionnaire/my/list`, { headers: AUTH() })
-    const data = await res.json()
-    if (data.code === 200 && Array.isArray(data.data)) {
-      apps.value = data.data.map(a => ({
-        jobPostId: a.jobPostId,
-        abbr:      a.companyName ? a.companyName.charAt(0) : '职',
-        title:     a.positionName,
-        company:   a.companyName,
-        deadline:  a.questionnaireDeadline || '',
-        date:      a.createdAt   ? a.createdAt.slice(0, 10) : '',
-        recruit:   RECRUIT_LABEL[a.recruitType] || '',
-        bc:        RECRUIT_BADGE[RECRUIT_LABEL[a.recruitType]] || 'badge-gray',
-        k:         'done',
-      }))
-    }
-  } catch {
-    // 接口未上线时保留空列表，不用 mock 数据
+    const readResult = await loadMyApplicationsPage(activeTab.value)
+    tabCounts.value = { ...tabCounts.value, ...readResult.tabCounts }
+    apps.value = readResult.list.map(readApplication => ({
+      id: readApplication.id,
+      jobPostId: readApplication.jobPostId,
+      abbr: readApplication.companyName?.charAt(0) || '职',
+      title: readApplication.positionName || '未知岗位',
+      company: readApplication.companyName || '',
+      deadline: readApplication.questionnaireDeadline || '',
+      expired: !!readApplication.expired,
+      sourceUrl: readApplication.sourceUrl || '',
+      submissionStatus: readApplication.submissionStatus,
+      statusLabel: readApplication.statusLabel || '',
+      date: (readApplication.updatedAt || readApplication.createdAt || '').slice(0, 10),
+      k: submissionStatusToTabKey(readApplication.submissionStatus),
+    }))
+  } catch (readError) {
+    apps.value = []
+    toast.error(readError?.message || '加载投递记录失败')
   }
 }
 
-const appTabs = computed(() => [{ k: 'all', label: '全部', n: apps.value.length }])
+const appTabs = computed(() => [
+  { k:'all', label:'全部', n:tabCounts.value.all || 0 },
+  { k:'draft', label:'草稿', n:tabCounts.value.draft || 0 },
+  { k:'pending', label:'审核中', n:tabCounts.value.pending || 0 },
+  { k:'done', label:'已投递', n:tabCounts.value.done || 0 },
+])
 
 function isExpired(deadline) {
   if (!deadline) return false
   return new Date(deadline) < new Date(new Date().toDateString())
 }
 const filteredApps = computed(() => activeTab.value === 'all' ? apps.value : apps.value.filter(a => a.k === activeTab.value))
+watch(activeTab, loadApplications)
+
+function canEditApply(readApplication) {
+  return canEditApplication(readApplication)
+}
 
 // ── 修改投递 ──
 const showEditApply = ref(false)
 const editingApp = ref(null)
 const editAnswers = ref({})
+const editFileIds = ref({})
+const editQuestions = ref([])
+const editFiles = ref([])
 
-const mockQuestions = [
+const legacyQuestions = [
   { id: 1001, title: '姓名',               type: 'TEXT',        required: true,  placeholder: '请填写真实姓名' },
   { id: 1002, title: '年级',               type: 'RADIO',       required: true,  options: ['2021级', '2022级', '2023级', '2024级'] },
   { id: 1003, title: '期望实习时长',       type: 'CHECKBOX',    required: true,  options: ['3个月以内', '3-6个月', '6个月以上'] },
@@ -444,9 +474,26 @@ const savedAnswers = {
   '内容运营实习生':             { 1001: '李同学', 1002: '2023级', 1003: ['3-6个月'], 1004: '参与过学院新媒体账号运营。', 1005: '用户增长运营。', 1006: '李同学_简历_封面.jpg' },
 }
 
-function openEditApply(app) {
-  editingApp.value = app
-  editAnswers.value = JSON.parse(JSON.stringify(savedAnswers[app.title] || {}))
+async function openEditApply(readApplication) {
+  editingApp.value = readApplication
+  editAnswers.value = {}
+  editFileIds.value = {}
+  try {
+    const [readBundle, readAnswer, readFiles] = await Promise.all([
+      loadQuestionnaireBundle(readApplication.jobPostId),
+      loadMyAnswerRecord(readApplication.jobPostId),
+      loadResumeFileList(),
+    ])
+    editQuestions.value = readBundle.questions
+    editFiles.value = mapResumeFilesForPicker(readFiles)
+    if (readAnswer?.answers) {
+      applyParsedToProfileForm(editQuestions.value, readAnswer.answers,
+        readFiles, editAnswers.value, editFileIds.value)
+    }
+  } catch (readError) {
+    toast.error(readError?.message || '加载投递失败')
+    return
+  }
   showEditApply.value = true
 }
 function toggleEditCheck(qid, opt) {
@@ -460,36 +507,49 @@ const editFileRefs = {}
 function triggerEditFile(qid) {
   if (editFileRefs[qid]) editFileRefs[qid].click()
 }
-function handleEditFile(qid, e) {
-  const f = e.target.files?.[0]
-  if (!f) return
-  const ext = f.name.split('.').pop().toLowerCase()
-  const imgExts = ['jpg','jpeg','png','gif','webp','heic']
-  if (ext !== 'pdf' && !imgExts.includes(ext)) {
-    toast.error('仅支持 PDF 或图片格式')
-    return
-  }
-  if (f.size > 5 * 1024 * 1024) {
-    toast.error('文件不能超过 5 MB')
-    return
-  }
-  editAnswers.value[qid] = f.name
-  toast.success('简历已更换：' + f.name)
+function selectEditFile(readQuestionId, readFile) {
+  editAnswers.value[readQuestionId] = readFile.name
+  editFileIds.value[readQuestionId] = readFile.id
 }
-function submitEditApply() {
-  for (const q of mockQuestions) {
-    if (!q.required) continue
-    const v = editAnswers.value[q.id]
-    if (!v || (Array.isArray(v) && v.length === 0)) {
-      toast.error('请填写「' + q.title + '」')
-      return
-    }
+
+function clearEditFile(readQuestionId) {
+  delete editAnswers.value[readQuestionId]
+  delete editFileIds.value[readQuestionId]
+}
+
+async function handleEditFile(readQuestionId, readEvent) {
+  const readFile = readEvent.target.files?.[0]
+  const readError = validateQuestionnaireUploadFile(readFile)
+  if (readError) {
+    toast.error(readError)
+    return
   }
-  if (editingApp.value) {
-    savedAnswers[editingApp.value.title] = JSON.parse(JSON.stringify(editAnswers.value))
+  try {
+    const readResult = await uploadQuestionnaireFile(readFile)
+    editAnswers.value[readQuestionId] = readResult.originalName
+    editFileIds.value[readQuestionId] = readResult.id
+    toast.success('附件上传成功')
+  } catch (uploadError) {
+    toast.error(uploadError?.message || '附件上传失败')
+  } finally {
+    readEvent.target.value = ''
   }
-  showEditApply.value = false
-  toast.success('投递信息已更新')
+}
+async function submitEditApply() {
+  const readError = validateRequiredAnswers(editQuestions.value, editAnswers.value, editFileIds.value)
+  if (readError) {
+    toast.error(readError)
+    return
+  }
+  try {
+    await submitQuestionnaire(editingApp.value.jobPostId,
+      editQuestions.value, editAnswers.value, editFileIds.value)
+    showEditApply.value = false
+    toast.success('投递信息已更新')
+    await loadApplications()
+  } catch (submitError) {
+    toast.error(submitError?.message || '更新投递失败')
+  }
 }
 
 async function uploadFile(e) {

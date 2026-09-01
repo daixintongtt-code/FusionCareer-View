@@ -77,7 +77,7 @@
                 <div style="font-size:.83rem;font-weight:600;color:var(--ink)">投递成功！</div>
                 <div style="font-size:.75rem;color:var(--ink-3);margin-top:.25rem">学院老师将在审核后联系你</div>
               </div>
-              <button v-else class="btn btn-primary" style="width:100%" @click="showApply=true">
+              <button v-else class="btn btn-primary" style="width:100%" @click="openApply">
                 <i class="ti ti-send"></i> 立即投递
               </button>
             </template>
@@ -118,26 +118,26 @@
             </div>
             <div v-else-if="q.type==='FILE_UPLOAD'" class="resume-picker">
               <!-- 当前已选：answers[q.id] 是 { name, file, fileId, url } 对象 -->
-              <div v-if="answers[q.id]" class="resume-picker-current">
+              <div v-if="fileAnswers[q.id]" class="resume-picker-current">
                 <i class="ti ti-file-check" style="color:#1e6636"></i>
-                <span>{{ answers[q.id].name }}</span>
-                <button class="resume-picker-clear" @click="answers[q.id]=null" title="取消选择"><i class="ti ti-x" /></button>
+                <span>{{ fileAnswers[q.id].name }}</span>
+                <button class="resume-picker-clear" @click="fileAnswers[q.id]=null" title="取消选择"><i class="ti ti-x" /></button>
               </div>
               <!-- 选项区 -->
               <div class="resume-picker-opts">
                 <div class="resume-picker-section-label">从我的简历选择</div>
                 <div v-for="r in myResumes" :key="r.name"
                   class="resume-picker-item"
-                  :class="{ selected: answers[q.id] && answers[q.id].fileId===r.id }"
-                  @click="answers[q.id]={ name: r.name, file: null, fileId: r.id, url: r.url }"
+                  :class="{ selected: fileAnswers[q.id]?.id===r.id }"
+                  @click="fileAnswers[q.id]={ name: r.name, id: r.id }"
                 >
                   <i :class="['ti', r.icon]" />
                   <span>{{ r.name }}</span>
-                  <i v-if="answers[q.id] && answers[q.id].fileId===r.id" class="ti ti-circle-check-filled" style="color:var(--red);margin-left:auto" />
+                  <i v-if="fileAnswers[q.id]?.id===r.id" class="ti ti-circle-check-filled" style="color:var(--red);margin-left:auto" />
                 </div>
                 <div class="resume-picker-section-label" style="margin-top:.6rem">或上传本地文件</div>
                 <div class="resume-picker-item resume-picker-upload" @click="triggerFile(q.id)">
-                  <input type="file" style="display:none" :ref="el => { fileRefs[q.id] = el }" accept=".pdf,.doc,.docx" @change="e => handleFile(q.id, e)" />
+                  <input type="file" style="display:none" :ref="el => { fileRefs[q.id] = el }" accept=".pdf,.jpg,.jpeg,.png" @change="e => handleFile(q.id, e)" />
                   <i class="ti ti-cloud-upload" />
                   <span>点击上传新简历（PDF / Word）</span>
                 </div>
@@ -147,6 +147,7 @@
         </div>
         <div class="apply-modal-foot">
           <button class="btn btn-secondary btn-sm" @click="showApply=false">取消</button>
+          <button class="btn btn-secondary btn-sm" @click="saveDraft"><i class="ti ti-device-floppy" />保存草稿</button>
           <button class="btn btn-primary btn-sm" @click="submitApply"><i class="ti ti-send"></i>确认投递</button>
         </div>
       </div>
@@ -161,6 +162,18 @@ import UserNavbar from '@/components/UserNavbar.vue'
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
 import { readJson } from '@/lib/api'
+import {
+  applyParsedToDetailForm,
+  loadMyAnswerRecord,
+  loadQuestionnaireBundle,
+  loadResumeFileList,
+  resumeFileIconByName,
+  saveDraftQuestionnaire,
+  submitQuestionnaire,
+  uploadQuestionnaireFile,
+  validateQuestionnaireUploadFile,
+  validateRequiredAnswers,
+} from '@/composables/useQuestionnaireForm'
 
 const route = useRoute()
 const toast = useToast()
@@ -170,26 +183,23 @@ const loading = ref(false)
 const showApply = ref(false)
 const submitted = ref(false)
 const answers = ref({})
+const fileAnswers = ref({})
 const fileRefs = {}
+const questionnaireExpired = ref(false)
 
 // 从接口加载当前用户的简历文件列表
 const myResumes = ref([])
 async function loadMyResumes() {
   try {
-    const res = await fetch(`${BASE}/user/resume/file/list`, {
-      headers: { 'Fusion-Token': localStorage.getItem('fusion_token') || '' }
-    })
-    const data = await res.json()
-    if (data.code === 200 && Array.isArray(data.data)) {
-      myResumes.value = data.data.map(f => ({
-        id: f.id,
-        name: f.originalName,
-        url:  f.url,
-        icon: f.mimeType === 'application/pdf' ? 'ti-file-type-pdf' : 'ti-photo',
-      }))
-    }
-  } catch {
-    // 接口不通时保持空列表，用户可直接上传
+    const readFiles = await loadResumeFileList()
+    myResumes.value = readFiles.map(readFile => ({
+      id: readFile.id,
+      name: readFile.originalName,
+      icon: resumeFileIconByName(readFile.originalName),
+    }))
+  } catch (readError) {
+    myResumes.value = []
+    toast.error(readError?.message || '加载简历失败')
   }
 }
 
@@ -197,24 +207,12 @@ async function loadMyResumes() {
 const questions = ref([])
 async function loadQuestions(jobPostId) {
   try {
-    const res = await fetch(`${BASE}/questionnaire/questions/${jobPostId}`, {
-      headers: { 'Fusion-Token': localStorage.getItem('fusion_token') || '' }
-    })
-    const data = await res.json()
-    if (data.code === 200 && Array.isArray(data.data)) {
-      questions.value = data.data
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map(q => ({
-          id:          q.id,
-          title:       q.title,
-          type:        q.questionType,
-          required:    q.required,
-          placeholder: q.placeholder || '',
-          options:     q.options || [],
-        }))
-    }
-  } catch {
-    questions.value = mockQuestions
+    const readBundle = await loadQuestionnaireBundle(jobPostId)
+    questions.value = readBundle.questions
+    questionnaireExpired.value = readBundle.expired
+  } catch (readError) {
+    questions.value = []
+    toast.error(readError?.message || '加载问卷失败')
   }
 }
 
@@ -271,12 +269,12 @@ function triggerFile(qid) {
 // FILE_UPLOAD 题：answers 里存 { name, file, fileId, url } 对象
 // 选已有简历时：{ name, file: null, fileId: <id> }
 // 本地上传后：  { name, file: <File>, fileId: null, url: '' }
-function handleFile(qid, e) {
+function handleLegacyFile(qid, e) {
   var f = e.target.files[0]
   if (f) answers.value[qid] = { name: f.name, file: f, fileId: null, url: '' }
 }
 
-async function submitApply() {
+async function submitLegacy() {
   // 1. 校验必填
   for (var i = 0; i < questions.value.length; i++) {
     var q = questions.value[i]
@@ -363,6 +361,72 @@ async function submitApply() {
     }
   } catch {
     toast.error('提交失败，请检查网络')
+  }
+}
+
+async function loadMyAnswer() {
+  const readAnswer = await loadMyAnswerRecord(route.params.id)
+  if (readAnswer?.answers) {
+    applyParsedToDetailForm(questions.value, readAnswer.answers,
+      myResumes.value.map(readFile => ({ id:readFile.id, originalName:readFile.name })),
+      answers.value, fileAnswers.value)
+  }
+}
+
+async function openApply() {
+  if (questionnaireExpired.value) {
+    toast.error('问卷已截止，无法投递或修改')
+    return
+  }
+  answers.value = {}
+  fileAnswers.value = {}
+  await loadMyResumes()
+  await loadMyAnswer()
+  showApply.value = true
+}
+
+async function handleFile(readQuestionId, readEvent) {
+  const readFile = readEvent.target.files?.[0]
+  const readError = validateQuestionnaireUploadFile(readFile)
+  if (readError) {
+    toast.error(readError)
+    return
+  }
+  try {
+    const readResult = await uploadQuestionnaireFile(readFile)
+    fileAnswers.value[readQuestionId] = { id:readResult.id, name:readResult.originalName }
+    await loadMyResumes()
+    toast.success('附件上传成功')
+  } catch (uploadError) {
+    toast.error(uploadError?.message || '附件上传失败')
+  } finally {
+    readEvent.target.value = ''
+  }
+}
+
+async function saveDraft() {
+  try {
+    await saveDraftQuestionnaire(route.params.id, questions.value, answers.value, fileAnswers.value)
+    showApply.value = false
+    toast.success('草稿已保存')
+  } catch (readError) {
+    toast.error(readError?.message || '保存草稿失败')
+  }
+}
+
+async function submitApply() {
+  const readError = validateRequiredAnswers(questions.value, answers.value, fileAnswers.value)
+  if (readError) {
+    toast.error(readError)
+    return
+  }
+  try {
+    await submitQuestionnaire(route.params.id, questions.value, answers.value, fileAnswers.value)
+    showApply.value = false
+    submitted.value = true
+    toast.success('投递成功')
+  } catch (submitError) {
+    toast.error(submitError?.message || '提交失败')
   }
 }
 

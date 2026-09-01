@@ -119,11 +119,13 @@ GET /job/list
 GET  /job/{id}                                  获取岗位详情
 GET  /questionnaire/questions/{jobPostId}       获取该岗位的问卷题目
 POST /questionnaire/submit                      提交问卷（answers 序列化为 JSON 字符串）
+POST /questionnaire/draft                       保存问卷草稿
 POST /questionnaire/upload                      上传问卷附件（FILE_UPLOAD 题型）
+GET  /questionnaire/my/{jobPostId}              读取当前岗位作答
 GET  /user/resume/file/list                     加载我的简历列表（供投递时选择）
 ```
 
-题目接口不通时 fallback 到页内静态题目。
+题目、草稿和提交均使用真实后端数据，生产环境不回退静态题目。
 
 #### ProfileView — 个人中心
 
@@ -134,7 +136,7 @@ GET  /user/resume/file/list         简历文件列表
 POST /user/resume/file/upload       上传简历（multipart, field: file，≤20MB）
 GET  /user/resume/file/{id}/download  下载
 DELETE /user/resume/file/{id}       删除
-GET  /questionnaire/my/list         我的投递列表（需后端实现，未实现时显示空列表）
+GET  /questionnaire/my/list         我的投递列表与状态数量
 ```
 
 #### AdminView — 管理后台
