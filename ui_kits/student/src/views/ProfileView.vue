@@ -30,14 +30,31 @@
               <div class="grid-2">
                 <div class="form-group"><label class="form-label">姓名</label><input class="form-control" v-model="form.realName" /></div>
                 <div class="form-group"><label class="form-label">学号</label><input class="form-control" :value="form.sid" readonly /></div>
+                <div class="form-group"><label class="form-label">性别</label>
+                  <select class="form-control" v-model="form.gender"><option value="">未填写</option><option value="MALE">男</option><option value="FEMALE">女</option><option value="OTHER">其他</option></select>
+                </div>
+                <div class="form-group"><label class="form-label">出生日期</label><input class="form-control" type="date" v-model="form.birthDate" /></div>
+                <div class="form-group"><label class="form-label">政治面貌</label>
+                  <select class="form-control" v-model="form.politicalStatus"><option value="">未填写</option><option value="MASSES">群众</option><option value="LEAGUE_MEMBER">共青团员</option><option value="PARTY_MEMBER">中共党员</option><option value="OTHER">其他</option></select>
+                </div>
                 <div class="form-group"><label class="form-label">届次</label><input class="form-control" v-model="form.grade" /></div>
+                <div class="form-group"><label class="form-label">专业</label><input class="form-control" v-model="form.major" /></div>
                 <div class="form-group"><label class="form-label">学历</label>
                   <select class="form-control" v-model="form.eduLevel">
                     <option v-for="opt in EDU_LEVEL_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                   </select>
                 </div>
+                <div class="form-group"><label class="form-label">导师</label><input class="form-control" v-model="form.supervisor" /></div>
                 <div class="form-group"><label class="form-label">联系邮箱</label><input class="form-control" v-model="form.email" /></div>
                 <div class="form-group"><label class="form-label">手机号</label><input class="form-control" v-model="form.phone" placeholder="请填写手机号" /></div>
+                <div class="form-group"><label class="form-label">微信号</label><input class="form-control" v-model="form.wechat" /></div>
+                <div class="form-group"><label class="form-label">生源地</label><input class="form-control" v-model="form.hometown" /></div>
+                <div class="form-group"><label class="form-label">就业意向排序</label><input class="form-control" v-model="form.intentionOrder" placeholder="如：新闻媒体,企业公司" /></div>
+                <div class="form-group"><label class="form-label">意向城市</label><input class="form-control" v-model="form.intentionCityText" placeholder="如：上海,北京" /></div>
+                <div class="form-group"><label class="form-label">当前心态</label>
+                  <select class="form-control" v-model="form.mindset"><option value="">未填写</option><option value="CONFIDENT">比较有把握</option><option value="CAUTIOUSLY_OPTIMISTIC">谨慎乐观</option><option value="LACK_OF_CONFIDENCE">信心不足</option><option value="VERY_ANXIOUS">非常焦虑</option><option value="ZEN_WAITING">佛系等待</option></select>
+                </div>
+                <div class="form-group"><label class="form-label">理想方向</label><textarea class="form-control" v-model="form.intentionDream" /></div>
               </div>
               <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem">
                 <button class="btn btn-secondary" @click="loadProfile">取消</button>
@@ -49,7 +66,18 @@
           <!-- 我的简历 -->
           <template v-if="view==='resume'">
             <div class="card card-p">
-              <div class="panel-title"><i class="ti ti-file-text" />我的简历</div>
+              <div class="panel-title"><i class="ti ti-file-description" />简历正文</div>
+              <div class="grid-2">
+                <div v-for="item in resumeFields" :key="item.key" class="form-group">
+                  <label class="form-label">{{ item.label }}</label>
+                  <textarea class="form-control" style="min-height:110px" v-model="resumeForm[item.key]" />
+                </div>
+              </div>
+              <div style="display:flex;justify-content:flex-end;margin:1rem 0 1.5rem">
+                <button class="btn btn-primary" @click="saveResume"><i class="ti ti-check" />保存简历正文</button>
+              </div>
+              <div class="divider" />
+              <div class="panel-title"><i class="ti ti-file-text" />简历文件</div>
               <div v-for="(r, index) in resumes" :key="r.name" class="resume-row">
                 <div style="width:38px;height:38px;border-radius:var(--r-md);background:var(--red-light);border:1px solid var(--red-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--red);font-size:1rem">
                   <i :class="['ti', r.icon]" />
@@ -59,8 +87,8 @@
                   <div style="font-size:.733rem;color:var(--ink-2)">{{ r.size }}</div>
                 </div>
                 <div style="display:flex;gap:.3rem">
-                  <button class="btn-icon btn" title="下载" @click="downloadResume(r)"><i class="ti ti-download" /></button>
-                  <button class="btn-icon btn" title="删除" @click="deleteResume(index)"><i class="ti ti-trash" /></button>
+                  <button class="btn-icon btn" title="下载" @click="downloadFile(r)"><i class="ti ti-download" /></button>
+                  <button class="btn-icon btn" title="删除" @click="deleteFile(index)"><i class="ti ti-trash" /></button>
                 </div>
               </div>
               <input
@@ -68,12 +96,12 @@
                 type="file"
                 accept=".pdf,image/*"
                 style="display:none"
-                @change="handleUpload"
+                @change="uploadFile"
               />
               <div class="upload-zone" style="margin-top:1rem" @click="fileInput?.click()">
                 <i class="ti ti-cloud-upload" />
                 <div class="uz-title">上传新简历</div>
-                <div class="uz-hint">支持 PDF、图片格式，单文件不超过 5 MB</div>
+                <div class="uz-hint">支持 PDF、JPG、PNG，单文件不超过 20 MB · {{ readQuota }}</div>
               </div>
             </div>
           </template>
@@ -196,20 +224,20 @@ import { useRoute, useRouter } from 'vue-router'
 import UserNavbar from '@/components/UserNavbar.vue'
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
-import { logoutUser } from '@/lib/auth'
+import { logoutUser, readUser } from '@/lib/auth'
+import { downloadFile as downloadBlob, readJson, readToken, uploadForm } from '@/lib/api'
 
 const router  = useRouter()
 const route   = useRoute()
 const toast   = useToast()
 const BASE    = '/api'
-const TOKEN   = () => localStorage.getItem('fusion_token') || ''
-const AUTH    = () => ({ 'Fusion-Token': TOKEN() })
+const AUTH    = () => ({ 'Fusion-Token': readToken() })
 
 const EDU_LEVEL_OPTIONS = [
-  { label: '本科生',       value: 'BACHELOR' },
+  { label: '本科生',       value: 'UNDERGRADUATE' },
   { label: '学术硕士研究生', value: 'ACADEMIC_MASTER' },
   { label: '专业硕士研究生', value: 'PROFESSIONAL_MASTER' },
-  { label: '博士研究生',    value: 'DOCTORATE' },
+  { label: '博士研究生',    value: 'DOCTORAL' },
 ]
 
 const validViews = ['info', 'resume', 'applications']
@@ -220,7 +248,9 @@ watch(() => route.query.tab, (t) => {
 
 onMounted(() => {
   loadProfile()
-  loadResumes()
+  loadResume()
+  loadFiles()
+  loadQuota()
   loadApplications()
 })
 
@@ -240,65 +270,117 @@ const navItems = [
 ]
 
 // ── 个人资料（对齐后端字段名）──
-const form = ref({
-  realName: '', sid: '', grade: '', eduLevel: 'ACADEMIC_MASTER',
-  email: '', phone: '',
-})
+const form = ref({ realName:'', sid:'', gender:'', birthDate:'', politicalStatus:'',
+  phone:'', email:'', wechat:'', hometown:'', grade:'', major:'', eduLevel:'', supervisor:'',
+  intentionOrder:'', intentionCityText:'', intentionDream:'', mindset:'' })
+
+function parseCities(readValue) {
+  try {
+    const readCities = JSON.parse(readValue || '[]')
+    return Array.isArray(readCities) ? readCities.join(',') : ''
+  } catch {
+    return ''
+  }
+}
+
 async function loadProfile() {
   try {
-    const res = await fetch(`${BASE}/user/profile/get`, { headers: AUTH() })
-    const data = await res.json()
-    if (data.code === 200 && data.data) {
-      const d = data.data
-      form.value = {
-        realName: d.realName  || '',
-        sid:      d.studentId || '',
-        grade:    d.grade     || '',
-        eduLevel: d.eduLevel  || 'ACADEMIC_MASTER',
-        email:    d.email     || '',
-        phone:    d.phone     || '',
-      }
+    const [readProfile, readCurrentUser] = await Promise.all([
+      readJson('/user/profile/get'), readUser(),
+    ])
+    const readValue = readProfile || {}
+    form.value = {
+      realName: readValue.realName || '', sid: readCurrentUser?.studentId || '',
+      gender: readValue.gender || '', birthDate: readValue.birthDate || '',
+      politicalStatus: readValue.politicalStatus || '', phone: readValue.phone || '',
+      email: readValue.email || '', wechat: readValue.wechat || '',
+      hometown: readValue.hometown || '', grade: readValue.grade || '',
+      major: readValue.major || '', eduLevel: readValue.eduLevel || '',
+      supervisor: readValue.supervisor || '', intentionOrder: readValue.intentionOrder || '',
+      intentionCityText: parseCities(readValue.intentionCity),
+      intentionDream: readValue.intentionDream || '', mindset: readValue.mindset || '',
     }
-  } catch { /* 保持默认值 */ }
+  } catch (readError) {
+    toast.error(readError?.message || '加载资料失败')
+  }
 }
 async function saveProfile() {
   try {
-    const res = await fetch(`${BASE}/user/profile/save`, {
-      method: 'PUT',
-      headers: { ...AUTH(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        realName: form.value.realName,
-        grade:    form.value.grade,
-        eduLevel: form.value.eduLevel,
-        email:    form.value.email,
-        phone:    form.value.phone,
-      }),
+    const updateProfile = { ...form.value }
+    delete updateProfile.sid
+    updateProfile.intentionCity = JSON.stringify(updateProfile.intentionCityText
+      .split(',').map(readCity => readCity.trim()).filter(Boolean))
+    delete updateProfile.intentionCityText
+    Object.keys(updateProfile).forEach(readKey => {
+      if (updateProfile[readKey] === '') updateProfile[readKey] = null
     })
-    const data = await res.json()
-    if (data.code === 200) toast.success('资料保存成功')
-    else throw new Error()
-  } catch { toast.error('保存失败，请重试') }
+    await readJson('/user/profile/save', {
+      method: 'PUT',
+      body: JSON.stringify(updateProfile),
+    })
+    toast.success('资料保存成功')
+  } catch (readError) { toast.error(readError?.message || '保存失败，请重试') }
 }
+
+const resumeFields = [
+  { key:'personalIntro', label:'个人简况' }, { key:'basicInfo', label:'基础信息' },
+  { key:'education', label:'教育背景' }, { key:'internship', label:'实习经历' },
+  { key:'campus', label:'在校经历' }, { key:'awards', label:'荣誉奖励' },
+  { key:'skills', label:'掌握技能' }, { key:'portfolio', label:'作品集' },
+  { key:'remark', label:'备注' },
+]
+const resumeForm = ref(Object.fromEntries(resumeFields.map(readField => [readField.key, ''])))
+
+async function loadResume() {
+  try {
+    const readResume = await readJson('/user/resume/get')
+    resumeFields.forEach(readField => {
+      resumeForm.value[readField.key] = readResume?.[readField.key] || ''
+    })
+  } catch (readError) {
+    toast.error(readError?.message || '加载简历失败')
+  }
+}
+
+async function saveResume() {
+  try {
+    await readJson('/user/resume/save', { method:'PUT', body:JSON.stringify(resumeForm.value) })
+    toast.success('简历正文已保存')
+  } catch (readError) {
+    toast.error(readError?.message || '保存简历失败')
+  }
+}
+
 const fileInput = ref(null)
 const showDeleteModal = ref(false)
 const deleteIndex = ref(null)
+const readQuota = ref('配额加载中')
 
 // ── 简历文件（动态加载）──
 const resumes = ref([])
-async function loadResumes() {
+async function loadFiles() {
   try {
-    const res = await fetch(`${BASE}/user/resume/file/list`, { headers: AUTH() })
-    const data = await res.json()
-    if (data.code === 200 && Array.isArray(data.data)) {
-      resumes.value = data.data.map(f => ({
-        id:   f.id,
-        name: f.originalName,
-        size: `${Math.round(f.fileSize / 1024)} KB · ${f.mimeType === 'application/pdf' ? 'PDF' : '图片'}`,
-        icon: f.mimeType === 'application/pdf' ? 'ti-file-type-pdf' : 'ti-photo',
-        url:  f.url,
-      }))
-    }
-  } catch { /* 保持空列表 */ }
+    const readFiles = await readJson('/user/resume/file/list')
+    resumes.value = (readFiles || []).map(readFile => ({
+      id: readFile.id, name: readFile.originalName,
+      size: `${Math.round(readFile.fileSize / 1024)} KB · ${readFile.mimeType === 'application/pdf' ? 'PDF' : '图片'}`,
+      icon: readFile.mimeType === 'application/pdf' ? 'ti-file-type-pdf' : 'ti-photo',
+    }))
+  } catch (readError) {
+    resumes.value = []
+    toast.error(readError?.message || '加载简历文件失败')
+  }
+}
+
+async function loadQuota() {
+  try {
+    const readValue = await readJson('/user/resume/file/quota')
+    const readUsed = (Number(readValue?.usedBytes || 0) / 1024 / 1024).toFixed(1)
+    const readTotal = (Number(readValue?.quotaBytes || 0) / 1024 / 1024).toFixed(0)
+    readQuota.value = `已用 ${readUsed} / ${readTotal} MB`
+  } catch {
+    readQuota.value = '配额暂不可用'
+  }
 }
 
 // ── 我的投递（动态加载）──
@@ -410,13 +492,13 @@ function submitEditApply() {
   toast.success('投递信息已更新')
 }
 
-async function handleUpload(e) {
+async function uploadFile(e) {
   const file = e.target.files?.[0]
   if (!file) return
   const ext = file.name.split('.').pop().toLowerCase()
-  const imgExts = ['jpg','jpeg','png','gif','webp','heic']
-  if (ext !== 'pdf' && !imgExts.includes(ext)) {
-    toast.error('仅支持 PDF 或图片格式')
+  const readExtensions = ['pdf', 'jpg', 'jpeg', 'png']
+  if (!readExtensions.includes(ext)) {
+    toast.error('仅支持 PDF、JPG、PNG')
     e.target.value = ''
     return
   }
@@ -426,55 +508,45 @@ async function handleUpload(e) {
     return
   }
   try {
-    const fd = new FormData()
-    fd.append('file', file)
-    const res = await fetch(`${BASE}/user/resume/file/upload`, {
-      method: 'POST',
-      headers: AUTH(),
-      body: fd,
-    })
-    const data = await res.json()
-    if (data.code === 200) {
-      toast.success('简历上传成功')
-      loadResumes()
-    } else {
-      toast.error(data.message || '上传失败')
-    }
-  } catch {
-    toast.error('上传失败，请检查网络')
+    const uploadBody = new FormData()
+    uploadBody.append('file', file)
+    await uploadForm('/user/resume/file/upload', uploadBody)
+    toast.success('简历上传成功')
+    await Promise.all([loadFiles(), loadQuota()])
+  } catch (readError) {
+    toast.error(readError?.message || '上传失败，请检查网络')
   }
   e.target.value = ''
 }
 
-async function downloadResume(r) {
-  if (!r.url) { toast.error('文件地址不可用'); return }
-  const a = document.createElement('a')
-  a.href = `${BASE}/user/resume/file/${r.id}/download`
-  a.download = r.name
-  a.click()
+async function downloadFile(readFile) {
+  try {
+    const readBlob = await downloadBlob(`/user/resume/file/${readFile.id}/download`)
+    const readUrl = URL.createObjectURL(readBlob)
+    const createLink = document.createElement('a')
+    createLink.href = readUrl
+    createLink.download = readFile.name
+    createLink.click()
+    URL.revokeObjectURL(readUrl)
+  } catch (readError) {
+    toast.error(readError?.message || '下载失败')
+  }
 }
 
-function deleteResume(index) {
+function deleteFile(index) {
   deleteIndex.value = index
   showDeleteModal.value = true
 }
 async function confirmDeleteResume() {
   if (deleteIndex.value === null) return
-  const r = resumes.value[deleteIndex.value]
+  const deleteTarget = resumes.value[deleteIndex.value]
   try {
-    const res = await fetch(`${BASE}/user/resume/file/${r.id}`, {
-      method: 'DELETE',
-      headers: AUTH(),
-    })
-    const data = await res.json()
-    if (data.code === 200) {
-      resumes.value.splice(deleteIndex.value, 1)
-      toast.success('简历已删除')
-    } else {
-      toast.error(data.message || '删除失败')
-    }
-  } catch {
-    toast.error('删除失败，请检查网络')
+    await readJson(`/user/resume/file/${deleteTarget.id}`, { method:'DELETE' })
+    resumes.value.splice(deleteIndex.value, 1)
+    await loadQuota()
+    toast.success('简历已删除')
+  } catch (readError) {
+    toast.error(readError?.message || '删除失败，请检查网络')
   }
   cancelDeleteResume()
 }
