@@ -102,8 +102,7 @@
             </table>
           </div>
           <div class="pagination" style="margin-top:.875rem">
-            <span style="font-size:.773rem;color:var(--ink-3);margin-right:auto">共 {{ jobs.length }} 条</span>
-            <button v-for="n in 3" :key="n" :class="['page-btn', n===1&&'active']">{{ n }}</button>
+            <span style="font-size:.773rem;color:var(--ink-3);margin-right:auto">当前显示 {{ jobs.length }} 条</span>
           </div>
         </div>
 
@@ -436,7 +435,7 @@
                 <span style="font-size:.75rem;color:var(--ink-3)">截止 {{ jg.dl }}</span>
               </div>
               <div class="jrc-row-count">
-                <span class="jrc-count-num">{{ jg.resumes.length }}</span>
+                <span class="jrc-count-num">{{ jg.applicationCount }}</span>
                 <span class="jrc-count-label">份投递</span>
               </div>
               <i class="ti ti-chevron-right" style="color:var(--ink-4);font-size:1rem;flex-shrink:0" />
@@ -458,16 +457,11 @@
                   <i class="ti ti-chevron-down" style="font-size:11px;margin-left:2px" />
                 </button>
                 <div class="export-menu" @click.stop>
-                  <div class="export-menu-item" @click="exportData('questionnaire'); exportMenuOpen=false">
+                  <div class="export-menu-item" @click="exportData('csv'); exportMenuOpen=false">
                     <i class="ti ti-table-export" />仅导出问卷数据
-                    <span>Excel</span>
+                    <span>CSV（Excel 可打开）</span>
                   </div>
-                  <div class="export-menu-item" @click="exportData('resume'); exportMenuOpen=false">
-                    <i class="ti ti-file-download" />仅导出简历附件
-                    <span>ZIP</span>
-                  </div>
-                  <div class="export-menu-divider" />
-                  <div class="export-menu-item" @click="exportData('all'); exportMenuOpen=false">
+                  <div class="export-menu-item" @click="exportData('zip'); exportMenuOpen=false">
                     <i class="ti ti-package-export" />导出问卷 + 简历
                     <span>ZIP</span>
                   </div>
@@ -485,18 +479,17 @@
                 <i class="ti ti-chevron-down" style="font-size:11px;margin-left:2px" />
               </button>
               <div class="export-menu" @click.stop>
-                <div class="export-menu-item" @click="exportData('questionnaire'); exportMenuOpen2=false">
-                  <i class="ti ti-table-export" />仅导出问卷数据<span>Excel</span>
-                </div>
-                <div class="export-menu-item" @click="exportData('resume'); exportMenuOpen2=false">
-                  <i class="ti ti-file-download" />仅导出简历附件<span>ZIP</span>
+                <div class="export-menu-item" @click="exportData('csv'); exportMenuOpen2=false">
+                  <i class="ti ti-table-export" />仅导出问卷数据<span>CSV（Excel 可打开）</span>
                 </div>
                 <div class="export-menu-divider" />
-                <div class="export-menu-item" @click="exportData('all'); exportMenuOpen2=false">
+                <div class="export-menu-item" @click="exportData('zip'); exportMenuOpen2=false">
                   <i class="ti ti-package-export" />导出问卷 + 简历<span>ZIP</span>
                 </div>
               </div>
             </div>
+            <button class="btn btn-secondary btn-sm" @click="reviewAnswers(true)">全部待审核通过</button>
+            <button class="btn btn-secondary btn-sm" @click="reviewAnswers(false)">全部待审核不通过</button>
             <button class="btn btn-secondary btn-sm" @click="resumeSel=[]">取消选择</button>
           </div>
 
@@ -506,8 +499,8 @@
                 <tr>
                   <th class="col-check">
                     <input type="checkbox"
-                      :checked="resumeSel.length===currentJobGroup?.resumes.length"
-                      @change="e=>resumeSel=e.target.checked?currentJobGroup.resumes.map(r=>r.sid):[]" />
+                      :checked="currentJobGroup?.resumes.length>0 && resumeSel.length===currentJobGroup.resumes.length"
+                      @change="e=>resumeSel=e.target.checked?currentJobGroup.resumes.map(r=>r.id):[]" />
                   </th>
                   <th>学生姓名</th>
                   <th>学号</th>
@@ -517,12 +510,12 @@
                 </tr>
               </thead>
               <tbody>
-                <template v-for="r in currentJobGroup?.resumes" :key="r.sid">
-                  <tr :class="expandedRow===r.sid?'row-expanded':''">
+                <template v-for="r in currentJobGroup?.resumes" :key="r.id">
+                  <tr :class="expandedRow===r.id?'row-expanded':''">
                     <td class="col-check">
                       <input type="checkbox"
-                        :checked="resumeSel.includes(r.sid)"
-                        @change="toggleResumeSel(r.sid)" />
+                        :checked="resumeSel.includes(r.id)"
+                        @change="toggleResumeSel(r.id)" />
                     </td>
                     <td style="font-weight:600">
                       <div style="display:flex;align-items:center;gap:.4rem">
@@ -536,23 +529,32 @@
 
                     </td>
                     <td>
-                      <button class="btn btn-ghost btn-sm" style="font-size:.78rem" @click="expandedRow=expandedRow===r.sid?null:r.sid">
-                        <i :class="['ti', expandedRow===r.sid?'ti-chevron-up':'ti-chevron-down']" />
-                        {{ expandedRow===r.sid?'收起':'查看问卷' }}
+                      <button class="btn btn-ghost btn-sm" style="font-size:.78rem" @click="expandedRow=expandedRow===r.id?null:r.id">
+                        <i :class="['ti', expandedRow===r.id?'ti-chevron-up':'ti-chevron-down']" />
+                        {{ expandedRow===r.id?'收起':'查看问卷' }}
                       </button>
                     </td>
                     <td>
                       <div class="tbl-acts">
-                        <div class="tbl-btn" @click="previewResume(r)"><span class="tbl-tip">预览简历</span><i class="ti ti-file-search" /></div>
-                        <div class="tbl-btn" @click="toast.success(r.name+' 简历下载中...')"><span class="tbl-tip">下载简历 PDF</span><i class="ti ti-file-download" /></div>
+                        <button v-if="r.submissionStatus==='SUBMITTED'" class="btn btn-ghost btn-sm" @click="reviewAnswer(r,true)">通过</button>
+                        <button v-if="r.submissionStatus==='SUBMITTED'" class="btn btn-ghost btn-sm" @click="reviewAnswer(r,false)">不通过</button>
+                        <span v-else class="badge badge-gray">{{ r.statusLabel }}</span>
                       </div>
                     </td>
                   </tr>
                   <!-- 展开问卷详情 -->
-                  <tr v-if="expandedRow===r.sid" class="detail-row">
-                    <td colspan="5">
+                  <tr v-if="expandedRow===r.id" class="detail-row">
+                    <td colspan="6">
                       <div class="questionnaire-detail">
                         <div class="qd-title"><i class="ti ti-clipboard-list" />问卷填写内容</div>
+                        <div style="font-size:.78rem;color:var(--ink-2);margin-bottom:.75rem">
+                          状态：{{ r.statusLabel || r.submissionStatus }}
+                          <template v-if="r.reviewedAt">
+                            · 结果：{{ r.reviewPassed ? '通过' : '不通过' }}
+                            · 时间：{{ r.reviewedAt.replace('T', ' ').slice(0, 16) }}
+                            · 意见：{{ r.reviewComments || '无' }}
+                          </template>
+                        </div>
                         <div class="qd-grid">
                           <div
                             v-for="qa in parseAnswers(currentJobGroup.questions, r.answers)"
@@ -594,10 +596,10 @@
 
                             <!-- FILE_UPLOAD：文件下载链接 -->
                             <div v-else-if="qa.questionType==='FILE_UPLOAD'" style="margin-top:.4rem">
-                              <a v-if="qa.value" :href="qa.value" target="_blank" class="qd-file-link">
+                              <span v-if="qa.value" class="qd-file-link">
                                 <i class="ti ti-file-type-pdf" />
-                                查看 / 下载简历
-                              </a>
+                                文件 ID {{ qa.value }}（请通过 ZIP 导出）
+                              </span>
                               <span v-else style="font-size:.78rem;color:var(--ink-3)">（未上传）</span>
                             </div>
                           </div>
@@ -612,20 +614,6 @@
         </div>
 
       </main>
-    </div>
-
-    <!-- ── PDF 简历预览弹窗 ── -->
-    <div v-if="previewUrl" class="modal-mask" @click.self="previewUrl=null">
-      <div class="preview-box">
-        <div class="preview-head">
-          <span style="font-weight:600;font-size:.9rem;color:var(--ink)">{{ previewName }} · 简历预览</span>
-          <div style="display:flex;gap:.4rem">
-            <a :href="previewUrl" target="_blank" class="btn btn-secondary btn-sm"><i class="ti ti-external-link" />新标签打开</a>
-            <button class="icon-btn" @click="previewUrl=null"><i class="ti ti-x" /></button>
-          </div>
-        </div>
-        <iframe :src="previewUrl" class="preview-iframe" />
-      </div>
     </div>
 
     <!-- ── 确认弹窗 ── -->
@@ -647,7 +635,7 @@ import { ref, computed, onMounted } from 'vue'
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
 import { logoutUser } from '@/lib/auth'
-import { readJson } from '@/lib/api'
+import { downloadFile as downloadBlob, readJson } from '@/lib/api'
 
 const toast = useToast()
 const v     = ref('list')
@@ -834,7 +822,6 @@ const NJ_INIT = () => ({
   recommended: false,
   questions: [],
 })
-const isExternal = ref(false)  // 兼容旧引用，不再使用
 const deliveryMode = ref('internal')  // 'internal' | 'external'
 
 function addQuestion() {
@@ -875,7 +862,7 @@ function validateJob() {
   if (!nj.value.jobCategory) { toast.error('请选择岗位大类'); return false }
   return true
 }
-function resetForm() { nj.value = NJ_INIT(); editingId.value = null; isExternal.value = false; deliveryMode.value = 'internal' }
+function resetForm() { nj.value = NJ_INIT(); editingId.value = null; deliveryMode.value = 'internal' }
 
 async function saveDraft() {
   if (!validateJob()) return
@@ -928,99 +915,21 @@ async function saveJob(updateStatus) {
 const resumeSel     = ref([])
 const expandedRow   = ref(null)
 const currentJobGroup = ref(null)
-
-// 模拟当前岗位的题目配置，对应后端 JobPostQuestionResponse[]
-// 包含所有五种 QuestionType
-const questionsBase = [
-  { id: 1001, sortOrder: 1, title: '姓名',           questionType: 'TEXT',        required: true,  placeholder: '请填写真实姓名',   options: [] },
-  { id: 1002, sortOrder: 2, title: '性别',           questionType: 'RADIO',       required: true,  placeholder: '',               options: ['男', '女', '其他'] },
-  { id: 1003, sortOrder: 3, title: '年级',           questionType: 'RADIO',       required: true,  placeholder: '',               options: ['2021级', '2022级', '2023级', '2024级'] },
-  { id: 1004, sortOrder: 4, title: '期望实习时长',   questionType: 'CHECKBOX',    required: true,  placeholder: '',               options: ['3个月以内', '3-6个月', '6个月以上'] },
-  { id: 1005, sortOrder: 5, title: '请简述您的新闻从业经历或相关实习经历', questionType: 'TEXTAREA', required: true,  placeholder: '如：曾在XX媒体实习X个月，负责……', options: [] },
-  { id: 1006, sortOrder: 6, title: '您对该岗位最感兴趣的方向是什么？',     questionType: 'TEXTAREA', required: true,  placeholder: '',               options: [] },
-  { id: 1007, sortOrder: 7, title: '个人简历',       questionType: 'FILE_UPLOAD', required: true,  placeholder: '',               options: [] },
-]
-
-// answers 为 QuestionnaireAnswerResponse.answers 的 JSON 字符串
-// FILE_UPLOAD 的 value 为后端文件 ID / URL
-const SAMPLE_PDF = 'https://mozilla.github.io/pdf.js/web/viewer.html?file=https%3A%2F%2Fmozilla.github.io%2Fpdf.js%2Fweb%2Fcompressed.tracemonkey-pldi-09.pdf'
-const jobGroups = computed(() => [
-  {
-    jobId: 1, title:'新媒体编辑记者', company:'新华社', dl:'06-30',
-    questions: questionsBase,
-    resumes: [
-      {
-        name:'李同学', sid:'22110001', date:'2025-05-20', isRevised:true, revisedAt:'2025-05-24',
-        answers: JSON.stringify([
-          { questionId:1001, value:'李明远' },
-          { questionId:1002, value:'男' },
-          { questionId:1003, value:'2022级' },
-          { questionId:1004, value:'3-6个月' },
-          { questionId:1005, value:'曾在光明日报实习六个月，参与日报采编工作，独立发稿 30 余篇。' },
-          { questionId:1006, value:'对深度报道与数据新闻最感兴趣，希望将数据可视化引入新闻生产流程。' },
-          { questionId:1007, value:SAMPLE_PDF },
-        ])
-      },
-      {
-        name:'王同学', sid:'22110008', date:'2025-05-19',
-        answers: JSON.stringify([
-          { questionId:1001, value:'王雨欣' },
-          { questionId:1002, value:'女' },
-          { questionId:1003, value:'2022级' },
-          { questionId:1004, value:'3个月以内' },
-          { questionId:1005, value:'曾在澎湃新闻实习四个月，主要负责社会新闻线索整理与稿件校对。' },
-          { questionId:1006, value:'对评论写作与时事分析最感兴趣，希望成长为评论员。' },
-          { questionId:1007, value:SAMPLE_PDF },
-        ])
-      },
-      {
-        name:'赵同学', sid:'22110022', date:'2025-05-17',
-        answers: JSON.stringify([
-          { questionId:1001, value:'赵晨阳' },
-          { questionId:1002, value:'男' },
-          { questionId:1003, value:'2023级' },
-          { questionId:1004, value:'6个月以上' },
-          { questionId:1005, value:'曾在中新社实习五个月，参与对外传播报道，英文稿发布 15 篇。' },
-          { questionId:1006, value:'对国际传播与涉外报道最感兴趣。' },
-          { questionId:1007, value:SAMPLE_PDF },
-        ])
-      },
-    ]
-  },
-  {
-    jobId: 5, title:'新媒体编辑', company:'人民日报社', dl:'07-01',
-    questions: questionsBase,
-    resumes: [
-      {
-        name:'陈同学', sid:'22110015', date:'2025-05-18',
-        answers: JSON.stringify([
-          { questionId:1001, value:'陈静怡' },
-          { questionId:1002, value:'女' },
-          { questionId:1003, value:'2022级' },
-          { questionId:1004, value:'3-6个月' },
-          { questionId:1005, value:'在校媒担任编辑两年，负责公众号内容策划与排版。' },
-          { questionId:1006, value:'对内容运营与用户增长最感兴趣。' },
-          { questionId:1007, value:SAMPLE_PDF },
-        ])
-      },
-      {
-        name:'孙同学', sid:'22110031', date:'2025-05-16',
-        answers: JSON.stringify([
-          { questionId:1001, value:'孙浩宇' },
-          { questionId:1002, value:'男' },
-          { questionId:1003, value:'2023级' },
-          { questionId:1004, value:'3个月以内,3-6个月' },
-          { questionId:1005, value:'在新浪新闻实习三个月，负责热点话题追踪与快讯编发。' },
-          { questionId:1006, value:'对时政类新媒体内容最感兴趣。' },
-          { questionId:1007, value:SAMPLE_PDF },
-        ])
-      },
-    ]
-  },
-])
+const answerGroups = ref({})
+const jobGroups = computed(() => jobs.value
+  .filter(readJob => readJob.status === 'PUBLISHED')
+  .map(readJob => ({
+    jobId:readJob.id,
+    title:readJob.positionName,
+    company:readJob.companyName,
+    dl:(readJob.workEndDate || '').slice(5, 10),
+    applicationCount:readJob.applicationCount ?? readJob.apps ?? 0,
+    questions:answerGroups.value[readJob.id]?.questions || [],
+    resumes:answerGroups.value[readJob.id]?.resumes || [],
+  })))
 
 // 解析 QuestionnaireAnswerResponse.answers JSON → [{...题目字段, value}]
-// CHECKBOX value 为逗号分隔字符串，FILE_UPLOAD value 为文件URL
+// CHECKBOX value 为逗号分隔字符串，FILE_UPLOAD value 为文件 ID
 function parseAnswers(questions, answersJson) {
   try {
     const arr = JSON.parse(answersJson)
@@ -1034,45 +943,73 @@ function parseAnswers(questions, answersJson) {
   } catch { return [] }
 }
 
-function openJobResumes(jg) {
-  currentJobGroup.value = jg
-  resumeSel.value = []
-  expandedRow.value = null
-  v.value = 'resumeDetail'
+async function openJobResumes(readGroup) {
+  try {
+    const [readQuestions, readPage] = await Promise.all([
+      readJson(`/admin/questionnaire/questions/${readGroup.jobId}`),
+      readJson(`/admin/questionnaire/answers/job/${readGroup.jobId}?page=1&size=100`),
+    ])
+    const readResumes = (readPage?.list || []).map(readAnswer => ({
+      id:readAnswer.id,
+      name:readAnswer.username || '未知学生',
+      sid:readAnswer.studentId || '',
+      date:(readAnswer.updatedAt || readAnswer.createdAt || '').slice(0, 10),
+      answers:readAnswer.answers || '[]',
+      submissionStatus:readAnswer.submissionStatus,
+      statusLabel:readAnswer.statusLabel || '',
+      reviewPassed:readAnswer.reviewPassed,
+      reviewComments:readAnswer.reviewComments || '',
+      reviewedAt:readAnswer.reviewedAt || '',
+    }))
+    answerGroups.value[readGroup.jobId] = { questions:readQuestions || [], resumes:readResumes }
+    currentJobGroup.value = { ...readGroup, questions:readQuestions || [], resumes:readResumes }
+    resumeSel.value = []
+    expandedRow.value = null
+    v.value = 'resumeDetail'
+  } catch (readError) {
+    toast.error(readError?.message || '加载投递失败')
+  }
 }
-function goJobResumes(j) {
-  const jg = jobGroups.value.find(g => g.jobId === j.id)
-  currentJobGroup.value = jg ?? null
-  resumeSel.value = []
-  expandedRow.value = null
-  v.value = jg ? 'resumeDetail' : 'resumes'
+function goJobResumes(readJob) {
+  const readGroup = jobGroups.value.find(readItem => readItem.jobId === readJob.id)
+  if (readGroup) openJobResumes(readGroup)
 }
 
-function toggleResumeSel(sid) {
-  resumeSel.value.includes(sid)
-    ? resumeSel.value = resumeSel.value.filter(s=>s!==sid)
-    : resumeSel.value.push(sid)
+function toggleResumeSel(readId) {
+  resumeSel.value.includes(readId)
+    ? resumeSel.value = resumeSel.value.filter(readValue => readValue !== readId)
+    : resumeSel.value.push(readId)
 }
 
 const exportMenuOpen  = ref(false)
 const exportMenuOpen2 = ref(false)
-const previewUrl  = ref(null)
-const previewName = ref('')
 
-function previewResume(r) {
+async function reviewAnswer(updateAnswer, updatePassed) {
+  const updateComments = window.prompt('请输入审核意见', updatePassed ? '审核通过' : '审核未通过')
+  if (!updateComments) return
   try {
-    const arr = JSON.parse(r.answers)
-    const q = currentJobGroup.value.questions.find(q => q.questionType === 'FILE_UPLOAD')
-    const ans = q ? arr.find(a => a.questionId === q.id) : null
-    if (ans?.value) {
-      // 用 Google Docs viewer 包裹以支持跨域 PDF 预览
-      const url = ans.value.startsWith('http') ? ans.value : `https://${ans.value}`
-      previewUrl.value = url.includes('viewer.html') ? url : `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`
-      previewName.value = r.name
-    } else {
-      toast.error('该投递暂无简历附件')
-    }
-  } catch { toast.error('无法读取简历') }
+    const readAnswer = await readJson(`/admin/questionnaire/answers/${updateAnswer.id}/review`, {
+      method:'PUT', body:JSON.stringify({ passed:updatePassed, comments:updateComments }),
+    })
+    Object.assign(updateAnswer, readAnswer)
+    toast.success('审核完成')
+  } catch (readError) {
+    toast.error(readError?.message || '审核失败')
+  }
+}
+
+async function reviewAnswers(updatePassed) {
+  const updateComments = window.prompt('请输入批量审核意见', updatePassed ? '批量审核通过' : '批量审核未通过')
+  if (!updateComments || !currentJobGroup.value) return
+  try {
+    await readJson(`/admin/questionnaire/answers/job/${currentJobGroup.value.jobId}/review-batch`, {
+      method:'PUT', body:JSON.stringify({ passed:updatePassed, comments:updateComments }),
+    })
+    await openJobResumes(currentJobGroup.value)
+    toast.success('批量审核完成')
+  } catch (readError) {
+    toast.error(readError?.message || '批量审核失败')
+  }
 }
 
 onMounted(() => {
@@ -1083,45 +1020,27 @@ onMounted(() => {
   })
 })
 
-function exportData(type) {
-  const targets = resumeSel.value.length
-    ? currentJobGroup.value.resumes.filter(r => resumeSel.value.includes(r.sid))
-    : currentJobGroup.value.resumes
-  const n = targets.length
-  const revisedCount = targets.filter(r => r.isRevised).length
-  const names = targets.map(r => r.name).join('、')
-  // 导出始终使用最新版本（isRevised 的已自动覆盖），提示管理员
-  const revisedNote = revisedCount > 0 ? `（含 ${revisedCount} 份已更新版本，自动采用最新数据）` : ''
-  if (type === 'questionnaire') toast.success(`正在导出 ${n} 份问卷数据（Excel）${revisedNote}：${names}`)
-  else if (type === 'resume') toast.success(`正在打包 ${n} 份简历附件（ZIP）${revisedNote}：${names}`)
-  else toast.success(`正在导出 ${n} 份问卷 + 简历（ZIP）${revisedNote}：${names}`)
-  resumeSel.value = []
+async function exportData(readFormat) {
+  if (!currentJobGroup.value) return
+  const readParams = new URLSearchParams({ format:readFormat })
+  resumeSel.value.forEach(readId => readParams.append('answerIds', readId))
+  try {
+    const readBlob = await downloadBlob(
+      `/admin/questionnaire/answers/job/${currentJobGroup.value.jobId}/export?${readParams}`)
+    const readUrl = URL.createObjectURL(readBlob)
+    const createLink = document.createElement('a')
+    createLink.href = readUrl
+    createLink.download = `applications-${currentJobGroup.value.jobId}.${readFormat}`
+    createLink.click()
+    URL.revokeObjectURL(readUrl)
+    resumeSel.value = []
+  } catch (readError) {
+    toast.error(readError?.message || '导出失败')
+  }
 }
 </script>
 
 <style scoped>
-/* ── PDF 预览弹窗 ── */
-.preview-box {
-  background: var(--bg-card);
-  border-radius: var(--r-lg);
-  width: min(860px, 92vw);
-  height: min(90vh, 900px);
-  display: flex; flex-direction: column;
-  box-shadow: 0 16px 48px rgba(28,26,24,.2);
-  overflow: hidden;
-  animation: slideUp .2s ease;
-}
-.preview-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: .75rem 1rem;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.preview-iframe {
-  flex: 1; width: 100%; border: none;
-  background: #f5f5f5;
-}
-
 /* ── 导出下拉菜单 ── */
 .export-dropdown { position: relative; }
 .export-menu {

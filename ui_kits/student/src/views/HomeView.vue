@@ -444,21 +444,6 @@ function workModeLabel(t) {
   return m[t] || t || ''
 }
 
-const MOCK = [
-  { id:1,  abbr:'新', title:'新媒体编辑记者',        company:'新华社',         city:'上海', province:'上海', jobtype:'新闻媒体', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'07-01', pub:'05-20', rec:true  },
-  { id:2,  abbr:'腾', title:'内容运营实习生',         company:'腾讯新闻',       city:'深圳', province:'广东', jobtype:'企业公司', recruit:'大实习',   duration:'3–6 个月', days:'5天', salary:'150–200元/天',  mode:'线下',       dl:'07-10', pub:'05-14', rec:false },
-  { id:3,  abbr:'字', title:'企业公关传播实习',       company:'字节跳动',       city:'上海', province:'上海', jobtype:'企业公司', recruit:'大实习',   duration:'3–6 个月', days:'5天', salary:'200元/天以上',  mode:'线下',       dl:'07-15', pub:'05-13', rec:false },
-  { id:4,  abbr:'澎', title:'数据新闻记者',           company:'澎湃新闻',       city:'上海', province:'上海', jobtype:'新闻媒体', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'06-20', pub:'05-12', rec:false },
-  { id:5,  abbr:'人', title:'新媒体编辑（人民网）',   company:'人民日报社',     city:'北京', province:'北京', jobtype:'新闻媒体', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'07-01', pub:'05-18', rec:true  },
-  { id:6,  abbr:'宣', title:'新闻宣传岗位',           company:'上海市委宣传部', city:'上海', province:'上海', jobtype:'党政机关', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'06-15', pub:'05-09', rec:false },
-  { id:7,  abbr:'央', title:'融媒体内容策划',         company:'央视新闻',       city:'北京', province:'北京', jobtype:'新闻媒体', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'07-15', pub:'05-15', rec:true  },
-  { id:8,  abbr:'财', title:'财经记者（校招）',       company:'财新传媒',       city:'上海', province:'上海', jobtype:'新闻媒体', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'08-01', pub:'05-10', rec:false },
-  { id:9,  abbr:'复', title:'新闻传播学助理研究员',   company:'复旦大学',       city:'上海', province:'上海', jobtype:'学术教职', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'07-30', pub:'05-07', rec:false },
-  { id:10, abbr:'界', title:'科技线记者实习',         company:'界面新闻',       city:'上海', province:'上海', jobtype:'新闻媒体', recruit:'日常实习', duration:'1–3 个月', days:'3天', salary:'100–150元/天',  mode:'线下',       dl:'06-28', pub:'05-06', rec:false },
-  { id:11, abbr:'彭', title:'彭博驻华实习记者',       company:'Bloomberg',      city:'北京', province:'北京', jobtype:'新闻媒体', recruit:'小实习',   duration:'3–6 个月', days:'5天', salary:'200元/天以上',  mode:'线下',       dl:'07-20', pub:'05-04', rec:false },
-  { id:12, abbr:'路', title:'路透社多媒体实习',       company:'Reuters',        city:'香港', province:'海外', jobtype:'新闻媒体', recruit:'小实习',   duration:'3–6 个月', days:'4天', salary:'200元/天以上',  mode:'线上线下均可', dl:'08-15', pub:'05-02', rec:false },
-]
-
 const DURATION_DISPLAY = {
   LESS_THAN_THREE_MONTHS: '3个月以内',
   THREE_TO_SIX_MONTHS:    '3–6个月',

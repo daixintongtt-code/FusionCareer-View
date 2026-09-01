@@ -459,21 +459,6 @@ const editFileIds = ref({})
 const editQuestions = ref([])
 const editFiles = ref([])
 
-const legacyQuestions = [
-  { id: 1001, title: '姓名',               type: 'TEXT',        required: true,  placeholder: '请填写真实姓名' },
-  { id: 1002, title: '年级',               type: 'RADIO',       required: true,  options: ['2021级', '2022级', '2023级', '2024级'] },
-  { id: 1003, title: '期望实习时长',       type: 'CHECKBOX',    required: true,  options: ['3个月以内', '3-6个月', '6个月以上'] },
-  { id: 1004, title: '请简述您的相关经历', type: 'TEXTAREA',    required: true,  placeholder: '如：曾在XX媒体实习，负责……' },
-  { id: 1005, title: '对该岗位最感兴趣的方向', type: 'TEXTAREA', required: false, placeholder: '简要说明' },
-  { id: 1006, title: '个人简历',           type: 'FILE_UPLOAD', required: true },
-]
-
-const savedAnswers = {
-  '新媒体编辑记者（2025校招）': { 1001: '李同学', 1002: '2023级', 1003: ['3-6个月'], 1004: '曾在复旦青年担任记者，负责深度报道。', 1005: '对融媒体内容策划最感兴趣。', 1006: '李同学_简历_2025.pdf' },
-  '数据新闻记者':               { 1001: '李同学', 1002: '2023级', 1003: ['3个月以内'], 1004: '有数据新闻课程学习经历。', 1005: '数据可视化方向。', 1006: '李同学_简历_2025.pdf' },
-  '内容运营实习生':             { 1001: '李同学', 1002: '2023级', 1003: ['3-6个月'], 1004: '参与过学院新媒体账号运营。', 1005: '用户增长运营。', 1006: '李同学_简历_封面.jpg' },
-}
-
 async function openEditApply(readApplication) {
   editingApp.value = readApplication
   editAnswers.value = {}

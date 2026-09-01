@@ -111,7 +111,7 @@ GET /job/list
         sortBy(NEWEST|DEADLINE)
 ```
 
-接口不通时自动 fallback 到页内 mock 数据。
+接口失败时页面显示错误提示，生产代码不回退到模拟数据。
 
 #### JobDetailView — 岗位详情 + 投递
 
@@ -154,19 +154,9 @@ GET    /admin/questionnaire/answers/job/{id}/export?format=zip  导出问卷与�
 
 > 管理端接口路径前缀 `/admin/**`，必须携带 ADMIN 用户的 `Fusion-Token`。
 
-### 后端尚未实现、前端已预留的接口
+### 已对齐的跨端能力
 
-| 接口 | 用途 | 前端处理方式 |
-|------|------|------------|
-| `GET /questionnaire/my/list` | 我的投递列表 | 接口不通时显示空列表，不报错 |
-| `GET .../export?format=excel/zip` | 管理端导出 | 按钮点击后 toast 提示，后端上线后自动生效 |
-| `recommended` 字段（岗位推荐） | 首页推荐轮播、管理员推荐切换 | 后端在 `fc_job_post` 新增 `is_recommended` 字段后自动生效 |
-
----
-
-## 本地开发 Mock
-
-各 view 的 `<script setup>` 里保留了完整的 `MOCK` 数组作为 fallback，接口请求失败时自动使用 mock 数据渲染，不影响开发调试。**生产发布前无需删除 mock 数据**，它只在 catch 分支触发。
+`/questionnaire/my/list` 投递列表、岗位 `recommended` 字段、管理端审核以及 CSV/ZIP 导出均由真实后端接口提供。生产视图中不包含岗位、问卷或投递模拟数据。
 
 ---
 
