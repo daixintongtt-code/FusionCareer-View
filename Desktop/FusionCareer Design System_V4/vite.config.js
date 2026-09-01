@@ -6,5 +6,18 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) }
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:9100',
+        changeOrigin: true,
+        rewrite: (readPath) => readPath.replace(/^\/api/, '')
+      },
+      '/fudan': {
+        target: 'http://127.0.0.1:9100',
+        changeOrigin: true
+      }
+    }
   }
 })

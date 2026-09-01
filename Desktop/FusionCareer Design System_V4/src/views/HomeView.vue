@@ -9,7 +9,7 @@
         <!-- 推荐轮播 -->
         <div class="card card-p" style="margin-bottom:1rem">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
-            <div class="section-label">★ 学院本周推荐岗位</div>
+            <div class="section-label"><i class="ti ti-star-filled" /> 学院本周推荐岗位</div>
             <div style="display:flex;gap:.25rem">
               <button class="btn btn-secondary btn-sm btn-icon" @click="slide(-1)"><i class="ti ti-chevron-left" /></button>
               <button class="btn btn-secondary btn-sm btn-icon" @click="slide(1)"><i class="ti ti-chevron-right" /></button>
@@ -28,9 +28,9 @@
         <!-- 搜索栏 -->
         <div class="search-bar" style="margin-bottom:.875rem">
           <i class="ti ti-search" style="color:var(--ink-3)" />
-          <input class="search-input" v-model="kw" placeholder="搜索岗位、公司、行业关键词…" @keyup.enter="fetchJobs" />
+          <input class="search-input" v-model="kw" placeholder="搜索岗位、公司、行业关键词…" @keyup.enter="loadJobs" />
           <div class="search-sep" />
-          <button class="btn btn-primary btn-sm" @click="fetchJobs">搜索</button>
+          <button class="btn btn-primary btn-sm" @click="loadJobs">搜索</button>
         </div>
 
         <!-- ══ 筛选面板 ══ -->
@@ -108,7 +108,7 @@
             <div v-if="showL2" class="frow frow-l2">
               <div class="l2-block">
                 <span class="flabel">时长</span>
-                <select class="filter-select" v-model="durationF" @change="fetchJobs">
+                <select class="filter-select" v-model="durationF" @change="loadJobs">
                   <option value="">不限</option>
                   <option>1 个月以内</option>
                   <option>1–3 个月</option>
@@ -132,7 +132,7 @@
 
               <div class="l2-block">
                 <span class="flabel">薪资</span>
-                <select class="filter-select" v-model="salaryF" @change="fetchJobs">
+                <select class="filter-select" v-model="salaryF" @change="loadJobs">
                   <option value="">不限</option>
                   <option>100元/天以下</option>
                   <option>100–150元/天</option>
@@ -221,9 +221,11 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import UserNavbar from '@/components/UserNavbar.vue'
 import AppToast from '@/components/AppToast.vue'
+import { useToast } from '@/composables/useToast'
+import { readJson } from '@/lib/api'
 
 const router = useRouter()
-const BASE = 'http://localhost:9100'
+const toast = useToast()
 const offset = ref(0)
 const CARD_W = 208
 const featured = ref([])
@@ -264,7 +266,7 @@ function selectProvince(p) {
   provinceF.value = p
   cityF.value = ''
   provinceOpen.value = false
-  fetchJobs()
+  loadJobs()
 }
 
 // 点击外部关闭省份下拉
@@ -302,7 +304,7 @@ function toggleCity() {
 function selectCity(c) {
   cityF.value = c
   cityOpen.value = false
-  fetchJobs()
+  loadJobs()
 }
 
 // ── 二级筛选（仅大实习/小实习） ──
@@ -356,7 +358,7 @@ const recruitTypes = ['大实习','小实习','日常实习','应届招聘']
 
 function toggleJobType(v) {
   jobtypeF.value = jobtypeF.value === v ? '' : v
-  fetchJobs()
+  loadJobs()
 }
 function toggleRecruitType(v) {
   if (recruitF.value === v) {
@@ -368,12 +370,12 @@ function toggleRecruitType(v) {
   if (!showL2.value) {
     durationF.value = ''; daysF.value = ''; salaryF.value = ''; modeF.value = ''
   }
-  fetchJobs()
+  loadJobs()
 }
 function toggleL2(field, val) {
   if (field === 'daysF') daysF.value = daysF.value === val ? '' : val
   if (field === 'modeF') modeF.value = modeF.value === val ? '' : val
-  fetchJobs()
+  loadJobs()
 }
 
 // ── Chips ──
@@ -402,12 +404,12 @@ function clearFilter(key) {
   else if (key === 'days')     daysF.value = ''
   else if (key === 'salary')   salaryF.value = ''
   else if (key === 'mode')     modeF.value = ''
-  fetchJobs()
+  loadJobs()
 }
 function clearAll() {
   provinceF.value = ''; cityF.value = ''; jobtypeF.value = ''; recruitF.value = ''
   durationF.value = ''; daysF.value = ''; salaryF.value = ''; modeF.value = ''
-  fetchJobs()
+  loadJobs()
 }
 
 // ── List ──
@@ -419,8 +421,8 @@ const sortBy     = ref('newest')
 const loading    = ref(false)
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
-function setSort(s) { sortBy.value = s; page.value = 1; fetchJobs() }
-function goPage(n)  { page.value = n; fetchJobs() }
+function setSort(s) { sortBy.value = s; page.value = 1; loadJobs() }
+function goPage(n)  { page.value = n; loadJobs() }
 function abbrOf(n)  { return n ? n.charAt(0) : '职' }
 function fmtDate(s) { return s ? s.slice(5,10) : '' }
 
@@ -442,21 +444,6 @@ function workModeLabel(t) {
   return m[t] || t || ''
 }
 
-const MOCK = [
-  { id:1,  abbr:'新', title:'新媒体编辑记者',        company:'新华社',         city:'上海', province:'上海', jobtype:'新闻媒体', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'07-01', pub:'05-20', rec:true  },
-  { id:2,  abbr:'腾', title:'内容运营实习生',         company:'腾讯新闻',       city:'深圳', province:'广东', jobtype:'企业公司', recruit:'大实习',   duration:'3–6 个月', days:'5天', salary:'150–200元/天',  mode:'线下',       dl:'07-10', pub:'05-14', rec:false },
-  { id:3,  abbr:'字', title:'企业公关传播实习',       company:'字节跳动',       city:'上海', province:'上海', jobtype:'企业公司', recruit:'大实习',   duration:'3–6 个月', days:'5天', salary:'200元/天以上',  mode:'线下',       dl:'07-15', pub:'05-13', rec:false },
-  { id:4,  abbr:'澎', title:'数据新闻记者',           company:'澎湃新闻',       city:'上海', province:'上海', jobtype:'新闻媒体', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'06-20', pub:'05-12', rec:false },
-  { id:5,  abbr:'人', title:'新媒体编辑（人民网）',   company:'人民日报社',     city:'北京', province:'北京', jobtype:'新闻媒体', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'07-01', pub:'05-18', rec:true  },
-  { id:6,  abbr:'宣', title:'新闻宣传岗位',           company:'上海市委宣传部', city:'上海', province:'上海', jobtype:'党政机关', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'06-15', pub:'05-09', rec:false },
-  { id:7,  abbr:'央', title:'融媒体内容策划',         company:'央视新闻',       city:'北京', province:'北京', jobtype:'新闻媒体', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'07-15', pub:'05-15', rec:true  },
-  { id:8,  abbr:'财', title:'财经记者（校招）',       company:'财新传媒',       city:'上海', province:'上海', jobtype:'新闻媒体', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'08-01', pub:'05-10', rec:false },
-  { id:9,  abbr:'复', title:'新闻传播学助理研究员',   company:'复旦大学',       city:'上海', province:'上海', jobtype:'学术教职', recruit:'应届招聘', duration:'',         days:'',   salary:'',            mode:'',          dl:'07-30', pub:'05-07', rec:false },
-  { id:10, abbr:'界', title:'科技线记者实习',         company:'界面新闻',       city:'上海', province:'上海', jobtype:'新闻媒体', recruit:'日常实习', duration:'1–3 个月', days:'3天', salary:'100–150元/天',  mode:'线下',       dl:'06-28', pub:'05-06', rec:false },
-  { id:11, abbr:'彭', title:'彭博驻华实习记者',       company:'Bloomberg',      city:'北京', province:'北京', jobtype:'新闻媒体', recruit:'小实习',   duration:'3–6 个月', days:'5天', salary:'200元/天以上',  mode:'线下',       dl:'07-20', pub:'05-04', rec:false },
-  { id:12, abbr:'路', title:'路透社多媒体实习',       company:'Reuters',        city:'香港', province:'海外', jobtype:'新闻媒体', recruit:'小实习',   duration:'3–6 个月', days:'4天', salary:'200元/天以上',  mode:'线上线下均可', dl:'08-15', pub:'05-02', rec:false },
-]
-
 const DURATION_DISPLAY = {
   LESS_THAN_THREE_MONTHS: '3个月以内',
   THREE_TO_SIX_MONTHS:    '3–6个月',
@@ -472,6 +459,10 @@ const DAYS_DISPLAY = {
 const JOBTYPE_ENUM = {
   '新闻媒体': 'MEDIA', '企业公司': 'ENTERPRISE',
   '党政机关': 'GOVERNMENT', '学术教职': 'ACADEMIC', '其他': 'OTHER',
+}
+const JOBTYPE_LABEL = {
+  MEDIA: '新闻媒体', ENTERPRISE: '企业公司', GOVERNMENT: '党政机关',
+  ACADEMIC: '学术教职', OTHER: '其他',
 }
 const RECRUIT_ENUM = {
   '大实习': 'BIG_INTERNSHIP', '小实习': 'SMALL_INTERNSHIP',
@@ -498,77 +489,76 @@ const SALARY_RANGE = {
   '200元/天以上':  { salaryMin: 201 },
 }
 
-async function fetchJobs() {
+function mapJob(readJob) {
+  const readRecruit = recruitLabel(readJob.recruitType)
+  return {
+    id: readJob.id,
+    abbr: abbrOf(readJob.companyName),
+    title: readJob.positionName,
+    company: readJob.companyName,
+    city: readJob.workCity || '',
+    jobtype: JOBTYPE_LABEL[readJob.jobCategory] || '',
+    recruit: readRecruit,
+    recruitBadge: RECRUIT_BADGE[readRecruit] || '',
+    l2tags: [
+      readJob.workPeriodType ? DURATION_DISPLAY[readJob.workPeriodType] : null,
+      readJob.workDurationType ? DAYS_DISPLAY[readJob.workDurationType] : null,
+      readJob.salaryDisplay,
+      workModeLabel(readJob.workMode),
+    ].filter(Boolean),
+    dl: fmtDate(readJob.workEndDate),
+  }
+}
+
+async function loadJobs() {
   loading.value = true
   try {
-    const params = new URLSearchParams({ page: page.value, size: pageSize })
-    if (kw.value)        params.set('keyword',     kw.value)
-    if (cityF.value)     params.set('workCity',    cityF.value)
-    else if (provinceF.value) params.set('workCity', provinceF.value)
-    if (jobtypeF.value)  params.set('jobCategory', JOBTYPE_ENUM[jobtypeF.value] || jobtypeF.value)
-    if (recruitF.value)  params.set('recruitType', RECRUIT_ENUM[recruitF.value] || recruitF.value)
+    const readParams = new URLSearchParams({ page: page.value, size: pageSize })
+    if (kw.value) readParams.set('keyword', kw.value)
+    if (provinceF.value) readParams.set('workProvince', provinceF.value)
+    if (cityF.value) readParams.set('workCity', cityF.value)
+    if (jobtypeF.value) readParams.set('jobCategory', JOBTYPE_ENUM[jobtypeF.value] || jobtypeF.value)
+    if (recruitF.value) readParams.set('recruitType', RECRUIT_ENUM[recruitF.value] || recruitF.value)
     if (durationF.value) {
-      const e = DURATION_ENUM[durationF.value]
-      if (e) params.set('workPeriodType', e)
+      const readDuration = DURATION_ENUM[durationF.value]
+      if (readDuration) readParams.set('workPeriodType', readDuration)
     }
     if (daysF.value) {
-      const e = DAYS_ENUM[daysF.value]
-      if (e) params.set('workDurationType', e)
+      const readDays = DAYS_ENUM[daysF.value]
+      if (readDays) readParams.set('workDurationType', readDays)
     }
     if (salaryF.value) {
-      const r = SALARY_RANGE[salaryF.value]
-      if (r?.salaryMin != null) params.set('salaryMin', r.salaryMin)
-      if (r?.salaryMax != null) params.set('salaryMax', r.salaryMax)
+      const readSalary = SALARY_RANGE[salaryF.value]
+      if (readSalary?.salaryMin != null) readParams.set('salaryMin', readSalary.salaryMin)
+      if (readSalary?.salaryMax != null) readParams.set('salaryMax', readSalary.salaryMax)
     }
-    if (modeF.value) params.set('workMode', MODE_ENUM[modeF.value] || modeF.value)
-    params.set('sortBy', sortBy.value === 'deadline' ? 'DEADLINE' : 'NEWEST')
-    const res  = await fetch(`${BASE}/job/list?${params}`)
-    const data = await res.json()
-    if (data.code === 200) {
-      const recs = data.data?.records || data.data?.list || []
-      total.value = data.data?.total || recs.length
-      jobs.value  = recs.map(j => ({
-        id: j.id, abbr: abbrOf(j.companyName), title: j.positionName,
-        company: j.companyName, city: j.workCity || '',
-        jobtype: j.jobCategory || '',
-        recruit: recruitLabel(j.recruitType),
-        recruitBadge: RECRUIT_BADGE[recruitLabel(j.recruitType)] || '',
-        l2tags: [j.workPeriodType ? DURATION_DISPLAY[j.workPeriodType] : null,
-                 j.workDurationType ? DAYS_DISPLAY[j.workDurationType] : null,
-                 j.salaryDisplay, workModeLabel(j.workMode)].filter(Boolean),
-        dl: fmtDate(j.workEndDate),
-        rec: !!j.recommended,
-      }))
-      if (page.value === 1 && featured.value.length === 0)
-        featured.value = recs.filter(j => j.recommended).slice(0, 6).map(j => ({ id: j.id, company: j.companyName, title: j.positionName }))
-      if (page.value === 1 && featured.value.length === 0)
-        featured.value = jobs.value.slice(0, 6).map(j => ({ id: j.id, company: j.company, title: j.title }))
-    } else throw new Error()
-  } catch {
-    let f = [...MOCK]
-    if (kw.value)          f = f.filter(j => j.title.includes(kw.value) || j.company.includes(kw.value))
-    if (cityF.value)       f = f.filter(j => j.city === cityF.value)
-    else if (provinceF.value) f = f.filter(j => j.province === provinceF.value)
-    if (jobtypeF.value)    f = f.filter(j => j.jobtype  === jobtypeF.value)
-    if (recruitF.value)    f = f.filter(j => j.recruit  === recruitF.value)
-    if (durationF.value)   f = f.filter(j => j.duration === durationF.value)
-    if (daysF.value)       f = f.filter(j => j.days     === daysF.value)
-    if (salaryF.value)     f = f.filter(j => j.salary   === salaryF.value)
-    if (modeF.value)       f = f.filter(j => j.mode     === modeF.value)
-    if (sortBy.value === 'deadline') f.sort((a,b) => a.dl.localeCompare(b.dl))
-    else                             f.sort((a,b) => b.pub.localeCompare(a.pub))
-    total.value = f.length
-    const s = (page.value-1) * pageSize
-    jobs.value = f.slice(s, s+pageSize).map(j => ({
-      ...j,
-      recruitBadge: RECRUIT_BADGE[j.recruit] || '',
-      l2tags: [j.duration, j.days, j.salary, j.mode].filter(Boolean),
-    }))
-    if (page.value === 1 && featured.value.length === 0)
-      featured.value = MOCK.filter(j => j.rec).map(j => ({ id:j.id, company:j.company, title:j.title }))
+    if (modeF.value) readParams.set('workMode', MODE_ENUM[modeF.value] || modeF.value)
+    readParams.set('sortBy', sortBy.value === 'deadline' ? 'DEADLINE' : 'NEWEST')
+    const readPage = await readJson(`/job/list?${readParams}`)
+    const readJobs = readPage?.list || []
+    total.value = readPage?.total ?? readJobs.length
+    jobs.value = readJobs.map(mapJob)
+  } catch (readError) {
+    jobs.value = []
+    total.value = 0
+    toast.error(readError?.message || '加载岗位失败')
   } finally { loading.value = false }
 }
-onMounted(fetchJobs)
+
+async function loadRecommendations() {
+  try {
+    const readPage = await readJson('/job/list?page=1&size=6&recommended=true&sortBy=NEWEST')
+    featured.value = (readPage?.list || []).map(readJob => ({
+      id: readJob.id,
+      company: readJob.companyName,
+      title: readJob.positionName,
+    }))
+  } catch {
+    featured.value = []
+  }
+}
+
+onMounted(() => Promise.all([loadJobs(), loadRecommendations()]))
 </script>
 
 <style scoped>

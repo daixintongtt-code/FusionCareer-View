@@ -16,7 +16,7 @@
               @click="switchView(item.view)"
             ><i :class="['ti',item.icon]" />{{ item.label }}</button>
             <div class="divider" />
-            <RouterLink class="profile-nav-item" to="/login"><i class="ti ti-logout" />退出登录</RouterLink>
+            <a class="profile-nav-item" href="#/login" @click.prevent="logoutUser"><i class="ti ti-logout" />退出登录</a>
           </div>
         </div>
 
@@ -30,14 +30,31 @@
               <div class="grid-2">
                 <div class="form-group"><label class="form-label">姓名</label><input class="form-control" v-model="form.realName" /></div>
                 <div class="form-group"><label class="form-label">学号</label><input class="form-control" :value="form.sid" readonly /></div>
+                <div class="form-group"><label class="form-label">性别</label>
+                  <select class="form-control" v-model="form.gender"><option value="">未填写</option><option value="MALE">男</option><option value="FEMALE">女</option><option value="OTHER">其他</option></select>
+                </div>
+                <div class="form-group"><label class="form-label">出生日期</label><input class="form-control" type="date" v-model="form.birthDate" /></div>
+                <div class="form-group"><label class="form-label">政治面貌</label>
+                  <select class="form-control" v-model="form.politicalStatus"><option value="">未填写</option><option value="MASSES">群众</option><option value="LEAGUE_MEMBER">共青团员</option><option value="PARTY_MEMBER">中共党员</option><option value="OTHER">其他</option></select>
+                </div>
                 <div class="form-group"><label class="form-label">届次</label><input class="form-control" v-model="form.grade" /></div>
+                <div class="form-group"><label class="form-label">专业</label><input class="form-control" v-model="form.major" /></div>
                 <div class="form-group"><label class="form-label">学历</label>
                   <select class="form-control" v-model="form.eduLevel">
                     <option v-for="opt in EDU_LEVEL_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                   </select>
                 </div>
+                <div class="form-group"><label class="form-label">导师</label><input class="form-control" v-model="form.supervisor" /></div>
                 <div class="form-group"><label class="form-label">联系邮箱</label><input class="form-control" v-model="form.email" /></div>
                 <div class="form-group"><label class="form-label">手机号</label><input class="form-control" v-model="form.phone" placeholder="请填写手机号" /></div>
+                <div class="form-group"><label class="form-label">微信号</label><input class="form-control" v-model="form.wechat" /></div>
+                <div class="form-group"><label class="form-label">生源地</label><input class="form-control" v-model="form.hometown" /></div>
+                <div class="form-group"><label class="form-label">就业意向排序</label><input class="form-control" v-model="form.intentionOrder" placeholder="如：新闻媒体,企业公司" /></div>
+                <div class="form-group"><label class="form-label">意向城市</label><input class="form-control" v-model="form.intentionCityText" placeholder="如：上海,北京" /></div>
+                <div class="form-group"><label class="form-label">当前心态</label>
+                  <select class="form-control" v-model="form.mindset"><option value="">未填写</option><option value="CONFIDENT">比较有把握</option><option value="CAUTIOUSLY_OPTIMISTIC">谨慎乐观</option><option value="LACK_OF_CONFIDENCE">信心不足</option><option value="VERY_ANXIOUS">非常焦虑</option><option value="ZEN_WAITING">佛系等待</option></select>
+                </div>
+                <div class="form-group"><label class="form-label">理想方向</label><textarea class="form-control" v-model="form.intentionDream" /></div>
               </div>
               <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem">
                 <button class="btn btn-secondary" @click="loadProfile">取消</button>
@@ -49,7 +66,18 @@
           <!-- 我的简历 -->
           <template v-if="view==='resume'">
             <div class="card card-p">
-              <div class="panel-title"><i class="ti ti-file-text" />我的简历</div>
+              <div class="panel-title"><i class="ti ti-file-description" />简历正文</div>
+              <div class="grid-2">
+                <div v-for="item in resumeFields" :key="item.key" class="form-group">
+                  <label class="form-label">{{ item.label }}</label>
+                  <textarea class="form-control" style="min-height:110px" v-model="resumeForm[item.key]" />
+                </div>
+              </div>
+              <div style="display:flex;justify-content:flex-end;margin:1rem 0 1.5rem">
+                <button class="btn btn-primary" @click="saveResume"><i class="ti ti-check" />保存简历正文</button>
+              </div>
+              <div class="divider" />
+              <div class="panel-title"><i class="ti ti-file-text" />简历文件</div>
               <div v-for="(r, index) in resumes" :key="r.name" class="resume-row">
                 <div style="width:38px;height:38px;border-radius:var(--r-md);background:var(--red-light);border:1px solid var(--red-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--red);font-size:1rem">
                   <i :class="['ti', r.icon]" />
@@ -59,8 +87,11 @@
                   <div style="font-size:.733rem;color:var(--ink-2)">{{ r.size }}</div>
                 </div>
                 <div style="display:flex;gap:.3rem">
-                  <button class="btn-icon btn" title="下载" @click="downloadResume(r)"><i class="ti ti-download" /></button>
-                  <button class="btn-icon btn" title="删除" @click="deleteResume(index)"><i class="ti ti-trash" /></button>
+                  <button v-if="failedFileId===r.id" class="btn btn-secondary btn-sm" @click="retryFile(r)">
+                    <i class="ti ti-refresh" />重试解析
+                  </button>
+                  <button class="btn-icon btn" title="下载" @click="downloadFile(r)"><i class="ti ti-download" /></button>
+                  <button class="btn-icon btn" title="删除" @click="deleteFile(index)"><i class="ti ti-trash" /></button>
                 </div>
               </div>
               <input
@@ -68,24 +99,24 @@
                 type="file"
                 accept=".pdf,image/*"
                 style="display:none"
-                @change="handleUpload"
+                @change="uploadFile"
               />
               <div
                 class="upload-zone"
-                :class="{ uploading }"
+                :class="{ uploading: uploadingFile }"
                 style="margin-top:1rem"
-                @click="!uploading && fileInput?.click()"
+                @click="!uploadingFile && fileInput?.click()"
               >
-                <i :class="['ti', uploading ? 'ti-loader-2 upload-spinner' : 'ti-cloud-upload']" />
-                <div class="uz-title">{{ uploading ? '正在上传并处理简历…' : '上传新简历' }}</div>
-                <div class="uz-hint">支持 PDF、图片格式，单文件不超过 20 MB</div>
+                <i :class="['ti', uploadingFile ? 'ti-loader-2 upload-spinner' : 'ti-cloud-upload']" />
+                <div class="uz-title">{{ uploadingFile ? '正在上传并处理简历…' : '上传新简历' }}</div>
+                <div class="uz-hint">支持 PDF、JPG、PNG，单文件不超过 20 MB · {{ readQuota }}</div>
               </div>
-              <label class="profile-sync-option" :class="{ disabled: uploading }">
-                <input type="checkbox" v-model="updateProfileOnUpload" :disabled="uploading" />
+              <label class="profile-sync-option" :class="{ disabled: uploadingFile }">
+                <input type="checkbox" v-model="updateProfile" :disabled="uploadingFile" />
                 <span class="profile-sync-check"><i class="ti ti-check" /></span>
                 <span class="profile-sync-copy">
-                  <strong>同时更新「我的资料」</strong>
-                  <small>勾选后，系统将识别简历中的姓名、届次、学历及联系方式，并同步更新对应资料。</small>
+                  <strong>同时更新「我的资料」和在线简历</strong>
+                  <small>勾选后，简历将发送至配置的 AI 服务，仅用识别到的非空字段更新资料。</small>
                 </span>
               </label>
               <div class="profile-sync-tip">
@@ -104,7 +135,7 @@
                   @click="activeTab=t.k"
                 >{{ t.label }}<span v-if="t.n" class="tab-count">{{ t.n }}</span></button>
               </div>
-              <div v-for="a in filteredApps" :key="a.title" class="app-row" @click="openJobDetail">
+              <div v-for="a in filteredApps" :key="a.id" class="app-row" @click="openJobDetail(a)">
                 <div class="job-logo" style="width:36px;height:36px">{{ a.abbr }}</div>
                 <div style="flex:1;min-width:0">
                   <div style="display:flex;align-items:center;gap:.45rem">
@@ -113,10 +144,10 @@
                   </div>
                   <div style="font-size:.773rem;color:var(--ink-2)">{{ a.company }}</div>
                 </div>
-                <div :title="isExpired(a.deadline) ? '已截止，不可修改' : '修改投递'">
-                  <button class="btn-icon btn" :disabled="isExpired(a.deadline)"
-                    :style="isExpired(a.deadline) ? 'opacity:.35;cursor:not-allowed' : ''"
-                    @click.stop="!isExpired(a.deadline) && openEditApply(a)">
+                <div :title="canEditApply(a) ? '修改投递' : '当前状态不可修改'">
+                  <button class="btn-icon btn" :disabled="!canEditApply(a)"
+                    :style="!canEditApply(a) ? 'opacity:.35;cursor:not-allowed' : ''"
+                    @click.stop="canEditApply(a) && openEditApply(a)">
                     <i class="ti ti-edit" />
                   </button>
                 </div>
@@ -140,7 +171,7 @@
             <button class="btn-icon btn" @click="showEditApply=false"><i class="ti ti-x" /></button>
           </div>
           <div class="apply-modal-body">
-            <div v-for="(q, qi) in mockQuestions" :key="q.id" class="aq-item">
+            <div v-for="(q, qi) in editQuestions" :key="q.id" class="aq-item">
               <div class="aq-label">{{ qi+1 }}. {{ q.title }}<span v-if="q.required" style="color:var(--red)"> *</span></div>
               <input v-if="q.type==='TEXT'" class="form-control" v-model="editAnswers[q.id]" :placeholder="q.placeholder||'请填写'" />
               <textarea v-else-if="q.type==='TEXTAREA'" class="form-control" style="min-height:80px" v-model="editAnswers[q.id]" :placeholder="q.placeholder||'请填写'"></textarea>
@@ -158,18 +189,18 @@
                 <div v-if="editAnswers[q.id]" class="resume-picker-current">
                   <i class="ti ti-file-check" style="color:#1e6636"></i>
                   <span>{{ editAnswers[q.id] }}</span>
-                  <button class="resume-picker-clear" @click="editAnswers[q.id]=null" title="取消选择"><i class="ti ti-x" /></button>
+                  <button class="resume-picker-clear" @click="clearEditFile(q.id)" title="取消选择"><i class="ti ti-x" /></button>
                 </div>
                 <div class="resume-picker-opts">
                   <div class="resume-picker-section-label">从我的简历选择</div>
-                  <div v-for="r in resumes" :key="r.name"
+                  <div v-for="r in editFiles" :key="r.name"
                     class="resume-picker-item"
-                    :class="{ selected: editAnswers[q.id]===r.name }"
-                    @click="editAnswers[q.id]=r.name"
+                    :class="{ selected: editFileIds[q.id]===r.id }"
+                    @click="selectEditFile(q.id, r)"
                   >
                     <i :class="['ti', r.icon]" />
                     <span>{{ r.name }}</span>
-                    <i v-if="editAnswers[q.id]===r.name" class="ti ti-circle-check-filled" style="color:var(--red);margin-left:auto" />
+                    <i v-if="editFileIds[q.id]===r.id" class="ti ti-circle-check-filled" style="color:var(--red);margin-left:auto" />
                   </div>
                   <div class="resume-picker-section-label" style="margin-top:.6rem">或上传本地文件</div>
                   <div class="resume-picker-item resume-picker-upload" @click="triggerEditFile(q.id)">
@@ -212,19 +243,31 @@ import { useRoute, useRouter } from 'vue-router'
 import UserNavbar from '@/components/UserNavbar.vue'
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
+import { logoutUser, readUser } from '@/lib/auth'
+import { downloadFile as downloadBlob, readJson, uploadForm } from '@/lib/api'
+import {
+  applyParsedToProfileForm,
+  canEditApplication,
+  loadMyAnswerRecord,
+  loadMyApplicationsPage,
+  loadQuestionnaireBundle,
+  loadResumeFileList,
+  mapResumeFilesForPicker,
+  submissionStatusToTabKey,
+  submitQuestionnaire,
+  uploadQuestionnaireFile,
+  validateQuestionnaireUploadFile,
+  validateRequiredAnswers,
+} from '@/composables/useQuestionnaireForm'
 
 const router  = useRouter()
 const route   = useRoute()
 const toast   = useToast()
-const BASE    = 'http://localhost:9100'
-const TOKEN   = () => localStorage.getItem('fusion_token') || ''
-const AUTH    = () => ({ 'Fusion-Token': TOKEN() })
-
 const EDU_LEVEL_OPTIONS = [
-  { label: '本科生',       value: 'BACHELOR' },
+  { label: '本科生',       value: 'UNDERGRADUATE' },
   { label: '学术硕士研究生', value: 'ACADEMIC_MASTER' },
   { label: '专业硕士研究生', value: 'PROFESSIONAL_MASTER' },
-  { label: '博士研究生',    value: 'DOCTORATE' },
+  { label: '博士研究生',    value: 'DOCTORAL' },
 ]
 
 const validViews = ['info', 'resume', 'applications']
@@ -235,7 +278,9 @@ watch(() => route.query.tab, (t) => {
 
 onMounted(() => {
   loadProfile()
-  loadResumes()
+  loadResume()
+  loadFiles()
+  loadQuota()
   loadApplications()
 })
 
@@ -243,8 +288,8 @@ function switchView(nextView) {
   if (!validViews.includes(nextView)) return
   router.push({ path: '/profile', query: { tab: nextView } })
 }
-function openJobDetail() {
-  router.push({ path: '/job/1', query: { from: 'applications' } })
+function openJobDetail(readApplication) {
+  router.push({ path: `/job/${readApplication.jobPostId}`, query: { from: 'applications' } })
 }
 
 const activeTab = ref('all')
@@ -255,71 +300,125 @@ const navItems = [
 ]
 
 // ── 个人资料（对齐后端字段名）──
-const form = ref({
-  realName: '', sid: '', grade: '', eduLevel: 'ACADEMIC_MASTER',
-  email: '', phone: '',
-})
+const form = ref({ realName:'', sid:'', gender:'', birthDate:'', politicalStatus:'',
+  phone:'', email:'', wechat:'', hometown:'', grade:'', major:'', eduLevel:'', supervisor:'',
+  intentionOrder:'', intentionCityText:'', intentionDream:'', mindset:'' })
+
+function parseCities(readValue) {
+  try {
+    const readCities = JSON.parse(readValue || '[]')
+    return Array.isArray(readCities) ? readCities.join(',') : ''
+  } catch {
+    return ''
+  }
+}
+
 async function loadProfile() {
   try {
-    const res = await fetch(`${BASE}/user/profile/get`, { headers: AUTH() })
-    const data = await res.json()
-    if (data.code === 200 && data.data) {
-      const d = data.data
-      form.value = {
-        realName: d.realName  || '',
-        sid:      d.studentId || '',
-        grade:    d.grade     || '',
-        eduLevel: d.eduLevel  || 'ACADEMIC_MASTER',
-        email:    d.email     || '',
-        phone:    d.phone     || '',
-      }
+    const [readProfile, readCurrentUser] = await Promise.all([
+      readJson('/user/profile/get'), readUser(),
+    ])
+    const readValue = readProfile || {}
+    form.value = {
+      realName: readValue.realName || '', sid: readCurrentUser?.studentId || '',
+      gender: readValue.gender || '', birthDate: readValue.birthDate || '',
+      politicalStatus: readValue.politicalStatus || '', phone: readValue.phone || '',
+      email: readValue.email || '', wechat: readValue.wechat || '',
+      hometown: readValue.hometown || '', grade: readValue.grade || '',
+      major: readValue.major || '', eduLevel: readValue.eduLevel || '',
+      supervisor: readValue.supervisor || '', intentionOrder: readValue.intentionOrder || '',
+      intentionCityText: parseCities(readValue.intentionCity),
+      intentionDream: readValue.intentionDream || '', mindset: readValue.mindset || '',
     }
-  } catch { /* 保持默认值 */ }
+  } catch (readError) {
+    toast.error(readError?.message || '加载资料失败')
+  }
 }
 async function saveProfile() {
   try {
-    const res = await fetch(`${BASE}/user/profile/save`, {
-      method: 'PUT',
-      headers: { ...AUTH(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        realName: form.value.realName,
-        grade:    form.value.grade,
-        eduLevel: form.value.eduLevel,
-        email:    form.value.email,
-        phone:    form.value.phone,
-      }),
+    const updateProfile = { ...form.value }
+    delete updateProfile.sid
+    updateProfile.intentionCity = JSON.stringify(updateProfile.intentionCityText
+      .split(',').map(readCity => readCity.trim()).filter(Boolean))
+    delete updateProfile.intentionCityText
+    Object.keys(updateProfile).forEach(readKey => {
+      if (updateProfile[readKey] === '') updateProfile[readKey] = null
     })
-    const data = await res.json()
-    if (data.code === 200) toast.success('资料保存成功')
-    else throw new Error()
-  } catch { toast.error('保存失败，请重试') }
+    await readJson('/user/profile/save', {
+      method: 'PUT',
+      body: JSON.stringify(updateProfile),
+    })
+    toast.success('资料保存成功')
+  } catch (readError) { toast.error(readError?.message || '保存失败，请重试') }
 }
+
+const resumeFields = [
+  { key:'personalIntro', label:'个人简况' }, { key:'basicInfo', label:'基础信息' },
+  { key:'education', label:'教育背景' }, { key:'internship', label:'实习经历' },
+  { key:'campus', label:'在校经历' }, { key:'awards', label:'荣誉奖励' },
+  { key:'skills', label:'掌握技能' }, { key:'portfolio', label:'作品集' },
+  { key:'remark', label:'备注' },
+]
+const resumeForm = ref(Object.fromEntries(resumeFields.map(readField => [readField.key, ''])))
+
+async function loadResume() {
+  try {
+    const readResume = await readJson('/user/resume/get')
+    resumeFields.forEach(readField => {
+      resumeForm.value[readField.key] = readResume?.[readField.key] || ''
+    })
+  } catch (readError) {
+    toast.error(readError?.message || '加载简历失败')
+  }
+}
+
+async function saveResume() {
+  try {
+    await readJson('/user/resume/save', { method:'PUT', body:JSON.stringify(resumeForm.value) })
+    toast.success('简历正文已保存')
+  } catch (readError) {
+    toast.error(readError?.message || '保存简历失败')
+  }
+}
+
 const fileInput = ref(null)
-const uploading = ref(false)
-const updateProfileOnUpload = ref(false)
 const showDeleteModal = ref(false)
 const deleteIndex = ref(null)
+const readQuota = ref('配额加载中')
+const updateProfile = ref(false)
+const uploadingFile = ref(false)
+const failedFileId = ref(null)
 
 // ── 简历文件（动态加载）──
 const resumes = ref([])
-async function loadResumes() {
+async function loadFiles() {
   try {
-    const res = await fetch(`${BASE}/user/resume/file/list`, { headers: AUTH() })
-    const data = await res.json()
-    if (data.code === 200 && Array.isArray(data.data)) {
-      resumes.value = data.data.map(f => ({
-        id:   f.id,
-        name: f.originalName,
-        size: `${Math.round(f.fileSize / 1024)} KB · ${f.mimeType === 'application/pdf' ? 'PDF' : '图片'}`,
-        icon: f.mimeType === 'application/pdf' ? 'ti-file-type-pdf' : 'ti-photo',
-        url:  f.url,
-      }))
-    }
-  } catch { /* 保持空列表 */ }
+    const readFiles = await readJson('/user/resume/file/list')
+    resumes.value = (readFiles || []).map(readFile => ({
+      id: readFile.id, name: readFile.originalName,
+      size: `${Math.round(readFile.fileSize / 1024)} KB · ${readFile.mimeType === 'application/pdf' ? 'PDF' : '图片'}`,
+      icon: readFile.mimeType === 'application/pdf' ? 'ti-file-type-pdf' : 'ti-photo',
+    }))
+  } catch (readError) {
+    resumes.value = []
+    toast.error(readError?.message || '加载简历文件失败')
+  }
+}
+
+async function loadQuota() {
+  try {
+    const readValue = await readJson('/user/resume/file/quota')
+    const readUsed = (Number(readValue?.usedBytes || 0) / 1024 / 1024).toFixed(1)
+    const readTotal = (Number(readValue?.quotaBytes || 0) / 1024 / 1024).toFixed(0)
+    readQuota.value = `已用 ${readUsed} / ${readTotal} MB`
+  } catch {
+    readQuota.value = '配额暂不可用'
+  }
 }
 
 // ── 我的投递（动态加载）──
 const apps = ref([])
+const tabCounts = ref({ all:0, draft:0, pending:0, done:0 })
 const RECRUIT_BADGE = {
   '大实习': 'badge-blue', '小实习': 'badge-green',
   '日常实习': 'badge-amber', '应届招聘': 'badge-red', '应届生招聘': 'badge-red',
@@ -331,57 +430,74 @@ const RECRUIT_LABEL = {
 }
 async function loadApplications() {
   try {
-    const res = await fetch(`${BASE}/questionnaire/my/list`, { headers: AUTH() })
-    const data = await res.json()
-    if (data.code === 200 && Array.isArray(data.data)) {
-      apps.value = data.data.map(a => ({
-        jobPostId: a.jobPostId,
-        abbr:      a.companyName ? a.companyName.charAt(0) : '职',
-        title:     a.positionName,
-        company:   a.companyName,
-        deadline:  a.questionnaireDeadline || '',
-        date:      a.createdAt   ? a.createdAt.slice(0, 10) : '',
-        recruit:   RECRUIT_LABEL[a.recruitType] || '',
-        bc:        RECRUIT_BADGE[RECRUIT_LABEL[a.recruitType]] || 'badge-gray',
-        k:         'done',
-      }))
-    }
-  } catch {
-    // 接口未上线时保留空列表，不用 mock 数据
+    const readResult = await loadMyApplicationsPage(activeTab.value)
+    tabCounts.value = { ...tabCounts.value, ...readResult.tabCounts }
+    apps.value = readResult.list.map(readApplication => ({
+      id: readApplication.id,
+      jobPostId: readApplication.jobPostId,
+      abbr: readApplication.companyName?.charAt(0) || '职',
+      title: readApplication.positionName || '未知岗位',
+      company: readApplication.companyName || '',
+      deadline: readApplication.questionnaireDeadline || '',
+      expired: !!readApplication.expired,
+      sourceUrl: readApplication.sourceUrl || '',
+      submissionStatus: readApplication.submissionStatus,
+      statusLabel: readApplication.statusLabel || '',
+      date: (readApplication.updatedAt || readApplication.createdAt || '').slice(0, 10),
+      k: submissionStatusToTabKey(readApplication.submissionStatus),
+    }))
+  } catch (readError) {
+    apps.value = []
+    toast.error(readError?.message || '加载投递记录失败')
   }
 }
 
-const appTabs = computed(() => [{ k: 'all', label: '全部', n: apps.value.length }])
+const appTabs = computed(() => [
+  { k:'all', label:'全部', n:tabCounts.value.all || 0 },
+  { k:'draft', label:'草稿', n:tabCounts.value.draft || 0 },
+  { k:'pending', label:'审核中', n:tabCounts.value.pending || 0 },
+  { k:'done', label:'已投递', n:tabCounts.value.done || 0 },
+])
 
 function isExpired(deadline) {
   if (!deadline) return false
   return new Date(deadline) < new Date(new Date().toDateString())
 }
 const filteredApps = computed(() => activeTab.value === 'all' ? apps.value : apps.value.filter(a => a.k === activeTab.value))
+watch(activeTab, loadApplications)
+
+function canEditApply(readApplication) {
+  return canEditApplication(readApplication)
+}
 
 // ── 修改投递 ──
 const showEditApply = ref(false)
 const editingApp = ref(null)
 const editAnswers = ref({})
+const editFileIds = ref({})
+const editQuestions = ref([])
+const editFiles = ref([])
 
-const mockQuestions = [
-  { id: 1001, title: '姓名',               type: 'TEXT',        required: true,  placeholder: '请填写真实姓名' },
-  { id: 1002, title: '年级',               type: 'RADIO',       required: true,  options: ['2021级', '2022级', '2023级', '2024级'] },
-  { id: 1003, title: '期望实习时长',       type: 'CHECKBOX',    required: true,  options: ['3个月以内', '3-6个月', '6个月以上'] },
-  { id: 1004, title: '请简述您的相关经历', type: 'TEXTAREA',    required: true,  placeholder: '如：曾在XX媒体实习，负责……' },
-  { id: 1005, title: '对该岗位最感兴趣的方向', type: 'TEXTAREA', required: false, placeholder: '简要说明' },
-  { id: 1006, title: '个人简历',           type: 'FILE_UPLOAD', required: true },
-]
-
-const savedAnswers = {
-  '新媒体编辑记者（2025校招）': { 1001: '李同学', 1002: '2023级', 1003: ['3-6个月'], 1004: '曾在复旦青年担任记者，负责深度报道。', 1005: '对融媒体内容策划最感兴趣。', 1006: '李同学_简历_2025.pdf' },
-  '数据新闻记者':               { 1001: '李同学', 1002: '2023级', 1003: ['3个月以内'], 1004: '有数据新闻课程学习经历。', 1005: '数据可视化方向。', 1006: '李同学_简历_2025.pdf' },
-  '内容运营实习生':             { 1001: '李同学', 1002: '2023级', 1003: ['3-6个月'], 1004: '参与过学院新媒体账号运营。', 1005: '用户增长运营。', 1006: '李同学_简历_封面.jpg' },
-}
-
-function openEditApply(app) {
-  editingApp.value = app
-  editAnswers.value = JSON.parse(JSON.stringify(savedAnswers[app.title] || {}))
+async function openEditApply(readApplication) {
+  editingApp.value = readApplication
+  editAnswers.value = {}
+  editFileIds.value = {}
+  try {
+    const [readBundle, readAnswer, readFiles] = await Promise.all([
+      loadQuestionnaireBundle(readApplication.jobPostId),
+      loadMyAnswerRecord(readApplication.jobPostId),
+      loadResumeFileList(),
+    ])
+    editQuestions.value = readBundle.questions
+    editFiles.value = mapResumeFilesForPicker(readFiles)
+    if (readAnswer?.answers) {
+      applyParsedToProfileForm(editQuestions.value, readAnswer.answers,
+        readFiles, editAnswers.value, editFileIds.value)
+    }
+  } catch (readError) {
+    toast.error(readError?.message || '加载投递失败')
+    return
+  }
   showEditApply.value = true
 }
 function toggleEditCheck(qid, opt) {
@@ -395,45 +511,58 @@ const editFileRefs = {}
 function triggerEditFile(qid) {
   if (editFileRefs[qid]) editFileRefs[qid].click()
 }
-function handleEditFile(qid, e) {
-  const f = e.target.files?.[0]
-  if (!f) return
-  const ext = f.name.split('.').pop().toLowerCase()
-  const imgExts = ['jpg','jpeg','png','gif','webp','heic']
-  if (ext !== 'pdf' && !imgExts.includes(ext)) {
-    toast.error('仅支持 PDF 或图片格式')
-    return
-  }
-  if (f.size > 5 * 1024 * 1024) {
-    toast.error('文件不能超过 5 MB')
-    return
-  }
-  editAnswers.value[qid] = f.name
-  toast.success('简历已更换：' + f.name)
-}
-function submitEditApply() {
-  for (const q of mockQuestions) {
-    if (!q.required) continue
-    const v = editAnswers.value[q.id]
-    if (!v || (Array.isArray(v) && v.length === 0)) {
-      toast.error('请填写「' + q.title + '」')
-      return
-    }
-  }
-  if (editingApp.value) {
-    savedAnswers[editingApp.value.title] = JSON.parse(JSON.stringify(editAnswers.value))
-  }
-  showEditApply.value = false
-  toast.success('投递信息已更新')
+function selectEditFile(readQuestionId, readFile) {
+  editAnswers.value[readQuestionId] = readFile.name
+  editFileIds.value[readQuestionId] = readFile.id
 }
 
-async function handleUpload(e) {
+function clearEditFile(readQuestionId) {
+  delete editAnswers.value[readQuestionId]
+  delete editFileIds.value[readQuestionId]
+}
+
+async function handleEditFile(readQuestionId, readEvent) {
+  const readFile = readEvent.target.files?.[0]
+  const readError = validateQuestionnaireUploadFile(readFile)
+  if (readError) {
+    toast.error(readError)
+    return
+  }
+  try {
+    const readResult = await uploadQuestionnaireFile(readFile)
+    editAnswers.value[readQuestionId] = readResult.originalName
+    editFileIds.value[readQuestionId] = readResult.id
+    toast.success('附件上传成功')
+  } catch (uploadError) {
+    toast.error(uploadError?.message || '附件上传失败')
+  } finally {
+    readEvent.target.value = ''
+  }
+}
+async function submitEditApply() {
+  const readError = validateRequiredAnswers(editQuestions.value, editAnswers.value, editFileIds.value)
+  if (readError) {
+    toast.error(readError)
+    return
+  }
+  try {
+    await submitQuestionnaire(editingApp.value.jobPostId,
+      editQuestions.value, editAnswers.value, editFileIds.value)
+    showEditApply.value = false
+    toast.success('投递信息已更新')
+    await loadApplications()
+  } catch (submitError) {
+    toast.error(submitError?.message || '更新投递失败')
+  }
+}
+
+async function uploadFile(e) {
   const file = e.target.files?.[0]
   if (!file) return
   const ext = file.name.split('.').pop().toLowerCase()
-  const imgExts = ['jpg','jpeg','png','gif','webp','heic']
-  if (ext !== 'pdf' && !imgExts.includes(ext)) {
-    toast.error('仅支持 PDF 或图片格式')
+  const readExtensions = ['pdf', 'jpg', 'jpeg', 'png']
+  if (!readExtensions.includes(ext)) {
+    toast.error('仅支持 PDF、JPG、PNG')
     e.target.value = ''
     return
   }
@@ -442,65 +571,73 @@ async function handleUpload(e) {
     e.target.value = ''
     return
   }
-  uploading.value = true
+  uploadingFile.value = true
   try {
-    const fd = new FormData()
-    fd.append('file', file)
-    fd.append('updateProfile', String(updateProfileOnUpload.value))
-    const res = await fetch(`${BASE}/user/resume/file/upload`, {
-      method: 'POST',
-      headers: AUTH(),
-      body: fd,
-    })
-    const data = await res.json()
-    if (data.code === 200) {
-      await loadResumes()
-      if (updateProfileOnUpload.value) {
-        await loadProfile()
-        toast.success('简历上传成功，「我的资料」已同步更新')
-      } else {
-        toast.success('简历上传成功')
-      }
+    const uploadBody = new FormData()
+    uploadBody.append('file', file)
+    uploadBody.append('updateProfile', String(updateProfile.value))
+    const readResult = await uploadForm('/user/resume/file/upload', uploadBody)
+    if (readResult?.parseStatus === 'SUCCESS') {
+      failedFileId.value = null
+      const readCount = (readResult.updatedProfileFields?.length || 0)
+        + (readResult.updatedResumeFields?.length || 0)
+      toast.success(`简历上传成功，已更新 ${readCount} 个字段`)
+      await Promise.all([loadProfile(), loadResume()])
+    } else if (readResult?.parseStatus === 'FAILED') {
+      failedFileId.value = readResult.file?.id || null
+      toast.error(readResult.message || '文件已保存，资料更新失败')
     } else {
-      toast.error(data.message || '上传失败')
+      toast.success('简历上传成功')
     }
-  } catch {
-    toast.error('上传失败，请检查网络')
+    await Promise.all([loadFiles(), loadQuota()])
+  } catch (readError) {
+    toast.error(readError?.message || '上传失败，请检查网络')
   } finally {
-    uploading.value = false
+    uploadingFile.value = false
     e.target.value = ''
   }
 }
 
-async function downloadResume(r) {
-  if (!r.url) { toast.error('文件地址不可用'); return }
-  const a = document.createElement('a')
-  a.href = `${BASE}/user/resume/file/${r.id}/download`
-  a.download = r.name
-  a.click()
+async function retryFile(readFile) {
+  try {
+    const readResult = await readJson(`/user/resume/file/${readFile.id}/parse`, { method:'POST' })
+    if (readResult?.parseStatus !== 'SUCCESS') throw new Error(readResult?.message || '解析失败')
+    failedFileId.value = null
+    await Promise.all([loadProfile(), loadResume()])
+    toast.success('资料更新成功')
+  } catch (readError) {
+    toast.error(readError?.message || '解析失败，请稍后重试')
+  }
 }
 
-function deleteResume(index) {
+async function downloadFile(readFile) {
+  try {
+    const readBlob = await downloadBlob(`/user/resume/file/${readFile.id}/download`)
+    const readUrl = URL.createObjectURL(readBlob)
+    const createLink = document.createElement('a')
+    createLink.href = readUrl
+    createLink.download = readFile.name
+    createLink.click()
+    URL.revokeObjectURL(readUrl)
+  } catch (readError) {
+    toast.error(readError?.message || '下载失败')
+  }
+}
+
+function deleteFile(index) {
   deleteIndex.value = index
   showDeleteModal.value = true
 }
 async function confirmDeleteResume() {
   if (deleteIndex.value === null) return
-  const r = resumes.value[deleteIndex.value]
+  const deleteTarget = resumes.value[deleteIndex.value]
   try {
-    const res = await fetch(`${BASE}/user/resume/file/${r.id}`, {
-      method: 'DELETE',
-      headers: AUTH(),
-    })
-    const data = await res.json()
-    if (data.code === 200) {
-      resumes.value.splice(deleteIndex.value, 1)
-      toast.success('简历已删除')
-    } else {
-      toast.error(data.message || '删除失败')
-    }
-  } catch {
-    toast.error('删除失败，请检查网络')
+    await readJson(`/user/resume/file/${deleteTarget.id}`, { method:'DELETE' })
+    resumes.value.splice(deleteIndex.value, 1)
+    await loadQuota()
+    toast.success('简历已删除')
+  } catch (readError) {
+    toast.error(readError?.message || '删除失败，请检查网络')
   }
   cancelDeleteResume()
 }

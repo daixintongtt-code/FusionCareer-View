@@ -23,14 +23,14 @@
           </div>
         </div>
 
-        <button class="btn-primary btn-red" @click="loginUIS">
+        <button class="btn-primary btn-red" @click="loginUser('NORMAL')">
           <i class="ti ti-external-link" />
-          <span>前往 UIS 登录</span>
+          <span>{{ isDev ? '本地学生登录' : '前往 UIS 登录' }}</span>
         </button>
 
         <div class="helper-text">
           <i class="ti ti-info-circle" />
-          将跳转至复旦大学统一身份认证页面，认证后自动返回
+          {{ isDev ? '开发模式：使用模拟学生身份' : '将跳转至复旦大学统一身份认证页面，认证后自动返回' }}
         </div>
       </div>
     </div>
@@ -56,33 +56,13 @@
             <button class="modal-close" @click="showAdminModal = false"><i class="ti ti-x" /></button>
           </div>
 
-          <form class="form" @submit.prevent="loginAdmin">
-            <div class="field" :class="{ 'has-value': form.username }">
-              <i class="ti ti-user field-icon" />
-              <input v-model="form.username" type="text" autocomplete="username" placeholder=" " required />
-              <label>账号</label>
-            </div>
-            <div class="field" :class="{ 'has-value': form.password }">
-              <i class="ti ti-lock field-icon" />
-              <input v-model="form.password" :type="showPwd ? 'text' : 'password'" autocomplete="current-password" placeholder=" " required />
-              <label>密码</label>
-              <button type="button" class="field-toggle" tabindex="-1" @click="showPwd = !showPwd">
-                <i :class="showPwd ? 'ti ti-eye-off' : 'ti ti-eye'" />
-              </button>
-            </div>
-            <div class="form-row">
-              <label class="remember">
-                <input v-model="form.remember" type="checkbox" />
-                <span class="checkbox-box"><i class="ti ti-check" /></span>
-                <span>记住我</span>
-              </label>
-              <a href="#" class="forgot">忘记密码？</a>
-            </div>
-            <button type="submit" class="btn-primary btn-gold">
-              <i class="ti ti-login-2" />
-              <span>登 录</span>
-            </button>
-          </form>
+          <div class="helper-text" style="margin-bottom:1rem">
+            管理员使用同一 UIS 账号登录，系统将根据后台角色自动进入管理控制台。
+          </div>
+          <button class="btn-primary btn-gold" @click="loginUser('ADMIN')">
+            <i class="ti ti-school" />
+            <span>{{ isDev ? '本地管理员登录' : '使用 UIS 登录' }}</span>
+          </button>
         </div>
       </div>
     </Transition>
@@ -90,17 +70,11 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref } from 'vue'
+import { loginUser } from '@/lib/auth'
 
-const router = useRouter()
 const showAdminModal = ref(false)
-const showPwd = ref(false)
-
-const form = reactive({ username: '', password: '', remember: false })
-
-const loginUIS = () => { router.push('/home') }
-const loginAdmin = () => { router.push('/admin') }
+const isDev = import.meta.env.DEV
 </script>
 
 <style scoped>
